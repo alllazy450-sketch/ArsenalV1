@@ -1,14 +1,27 @@
--- ========== W424HUB v5.0 - WindUI Edition ==========
-print("=== W424HUB - WindUI Loading ===")
+-- =================================
+-- UI LIBRARY (Load dari URL)
+-- =================================
+local W424UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/willrev-424/W424HUB/refs/heads/main/W424_UI.lua"))()
 
--- ========== LOAD WINDUI ==========
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-if not WindUI then
-    warn("❌ Gagal load WindUI!")
-    return
-end
-print("✅ WindUI loaded")
+local Window = W424UI:Window({
+    Title = "W424 HUB",
+    Footer = "",
+    Image = "109462748520607",
+    Icon = "rbxassetid://109462748520607",
+    Color = Color3.fromRGB(30, 132, 243),
+    ["Tab Width"] = 130,
+    Version = 3
+})
 
+Window:Tag({
+    Title = "Executor: " .. identifyexecutor(),
+    Color = Color3.fromRGB(100, 100, 100),
+    Radius = 13
+})
+
+-- =================================
+-- VARIABLES
+-- =================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -20,38 +33,6 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ========== BUAT WINDOW ==========
-local Window = WindUI:CreateWindow({
-    Title = "W424HUB",
-    Icon = "target",                   -- Ikon dari Lucide
-    Author = "W424",
-    Folder = "W424HUB_WindUI",
-    Transparency = 0.85,               -- Background transparan (glass effect)
-    Theme = {
-        Background = Color3.fromRGB(15, 15, 25),   -- Warna dasar gelap
-        Accent = Color3.fromRGB(220, 50, 50),      -- Warna aksen merah (Crimson)
-        Text = Color3.fromRGB(255, 255, 255),
-        Border = Color3.fromRGB(60, 60, 80)
-    }
-})
-
--- Notifikasi awal
-WindUI:Notify({
-    Title = "W424HUB",
-    Description = "Loaded with WindUI!",
-    Icon = "check",
-    Duration = 4
-})
-
--- ========== TAB ==========
-local TabAim = Window:CreateTab({ Name = "Aim", Icon = "crosshair" })
-local TabVisual = Window:CreateTab({ Name = "Visual", Icon = "eye" })
-local TabPlayer = Window:CreateTab({ Name = "Player", Icon = "user" })
-local TabArsenal = Window:CreateTab({ Name = "Arsenal", Icon = "sword" })
-
--- =====================================================
--- VARIABLES GLOBAL
--- =====================================================
 -- Aimbot
 local aimbotEnabled = false
 local aimMode = "Camera"
@@ -103,99 +84,115 @@ local statsOn = false
 local statsFrame = nil
 local statsText = nil
 
--- =====================================================
--- AIMBOT
--- =====================================================
-TabAim:CreateSection({ Name = "Aimbot Settings" })
+-- =================================
+-- BUAT TAB
+-- =================================
+local TabAim = Window:Tab({
+    Title = "Aim",
+    Icon = "rbxassetid://109462748520607"
+})
 
-TabAim:CreateToggle({
-    Name = "Enable Aimbot",
+local TabVisual = Window:Tab({
+    Title = "Visual",
+    Icon = "rbxassetid://109462748520607"
+})
+
+local TabPlayer = Window:Tab({
+    Title = "Player",
+    Icon = "rbxassetid://109462748520607"
+})
+
+local TabArsenal = Window:Tab({
+    Title = "Arsenal",
+    Icon = "rbxassetid://109462748520607"
+})
+
+-- =================================
+-- TAB AIM - AIMBOT
+-- =================================
+TabAim:Section("Aimbot Settings")
+
+TabAim:Toggle({
+    Title = "Enable Aimbot",
     Callback = function(v) aimbotEnabled = v end
 })
 
-TabAim:CreateDropdown({
-    Name = "Aim Mode",
-    Options = {"Camera", "Silent"},
-    Default = "Camera",
+TabAim:Dropdown({
+    Title = "Aim Mode",
+    List = {"Camera", "Silent"},
     Callback = function(v) aimMode = v end
 })
 
-TabAim:CreateDropdown({
-    Name = "Trigger",
-    Options = {"On Shoot", "Always"},
-    Default = "On Shoot",
+TabAim:Dropdown({
+    Title = "Trigger",
+    List = {"On Shoot", "Always"},
     Callback = function(v) aimTrigger = v end
 })
 
-TabAim:CreateDropdown({
-    Name = "Target Part",
-    Options = {"Head", "HumanoidRootPart", "Torso", "UpperTorso"},
-    Default = "Head",
+TabAim:Dropdown({
+    Title = "Target Part",
+    List = {"Head", "HumanoidRootPart", "Torso", "UpperTorso"},
     Callback = function(v) targetPart = v end
 })
 
-TabAim:CreateToggle({
-    Name = "Headshot Only",
+TabAim:Toggle({
+    Title = "Headshot Only",
     Callback = function(v)
         headshotOnly = v
         if v then targetPart = "Head" end
     end
 })
 
-TabAim:CreateToggle({
-    Name = "Anti Team",
+TabAim:Toggle({
+    Title = "Anti Team",
     Default = true,
     Callback = function(v) useTeamCheck = v end
 })
 
-TabAim:CreateToggle({
-    Name = "Visibility Check",
+TabAim:Toggle({
+    Title = "Visibility Check",
     Default = true,
     Callback = function(v) useVisCheck = v end
 })
 
-TabAim:CreateToggle({
-    Name = "Prediction",
+TabAim:Toggle({
+    Title = "Prediction",
     Callback = function(v) usePrediction = v end
 })
 
-TabAim:CreateSlider({
-    Name = "FOV Radius",
+TabAim:Slider({
+    Title = "FOV Radius",
     Min = 30,
     Max = 400,
     Default = 100,
-    Suffix = "px",
     Callback = function(v) fovRadius = v end
 })
 
-TabAim:CreateSlider({
-    Name = "Max Distance",
+TabAim:Slider({
+    Title = "Max Distance",
     Min = 50,
     Max = 500,
     Default = 300,
-    Suffix = "stud",
     Callback = function(v) maxDistance = v end
 })
 
-TabAim:CreateSlider({
-    Name = "Prediction Factor",
+TabAim:Slider({
+    Title = "Prediction Factor",
     Min = 0,
     Max = 100,
     Default = 20,
-    Suffix = "%",
     Callback = function(v) predFactor = v / 100 end
 })
 
-TabAim:CreateSlider({
-    Name = "Smoothness",
+TabAim:Slider({
+    Title = "Smoothness",
     Min = 1,
     Max = 100,
     Default = 100,
-    Suffix = "%",
     Callback = function(v) smoothness = v / 100 end
 })
 
--- FOV Circle (WindUI tidak punya bawaan, kita buat manual)
+-- FOV Circle
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Radius = fovRadius
@@ -208,52 +205,51 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 end)
 
-TabAim:CreateToggle({
-    Name = "Show FOV Circle",
+TabAim:Toggle({
+    Title = "Show FOV Circle",
     Callback = function(v) fovCircle.Visible = v end
 })
 
--- =====================================================
--- VISUAL TAB
--- =====================================================
-TabVisual:CreateSection({ Name = "ESP Chams" })
+-- =================================
+-- TAB VISUAL - ESP + OPTIMASI
+-- =================================
+TabVisual:Section("ESP Chams")
 
-TabVisual:CreateToggle({
-    Name = "Enable ESP",
+TabVisual:Toggle({
+    Title = "Enable ESP",
     Callback = function(v) espEnabled = v; if not v then clearESP() end end
 })
 
-TabVisual:CreateToggle({
-    Name = "ESP Team Check",
+TabVisual:Toggle({
+    Title = "ESP Team Check",
     Default = true,
     Callback = function(v) espTeam = v end
 })
 
-TabVisual:CreateColorPicker({
-    Name = "ESP Color",
-    Default = Color3.fromRGB(255,0,0),
+TabVisual:ColorPicker({
+    Title = "ESP Color",
+    Default = Color3.fromRGB(255, 0, 0),
     Callback = function(c)
         espColor = c
         for _, h in pairs(highlightObjects) do if h then h.FillColor = c end end
     end
 })
 
-TabVisual:CreateSlider({
-    Name = "ESP Transparency",
+TabVisual:Slider({
+    Title = "ESP Transparency",
     Min = 0,
     Max = 10,
     Default = 3,
-    Suffix = "/10",
     Callback = function(v)
         espTransparency = v / 10
         for _, h in pairs(highlightObjects) do if h then h.FillTransparency = espTransparency end end
     end
 })
 
--- Reduce Map
-TabVisual:CreateSection({ Name = "Optimization" })
-TabVisual:CreateToggle({
-    Name = "Reduce Map (Disable Minimap)",
+TabVisual:Section("Optimization")
+
+TabVisual:Toggle({
+    Title = "Reduce Map (Disable Minimap)",
     Callback = function(v)
         reduceMap = v
         if v then
@@ -276,9 +272,8 @@ TabVisual:CreateToggle({
     end
 })
 
--- FPS & Ping
-TabVisual:CreateToggle({
-    Name = "Show FPS & Ping",
+TabVisual:Toggle({
+    Title = "Show FPS & Ping",
     Callback = function(v)
         statsOn = v
         if v then
@@ -312,33 +307,33 @@ TabVisual:CreateToggle({
     end
 })
 
--- =====================================================
--- PLAYER TAB
--- =====================================================
-TabPlayer:CreateSection({ Name = "Player Mods" })
+-- =================================
+-- TAB PLAYER
+-- =================================
+TabPlayer:Section("Player Mods")
 
-TabPlayer:CreateToggle({
-    Name = "No Recoil",
+TabPlayer:Toggle({
+    Title = "No Recoil",
     Callback = function(v) noRecoil = v end
 })
 
-TabPlayer:CreateToggle({
-    Name = "No Spread",
+TabPlayer:Toggle({
+    Title = "No Spread",
     Callback = function(v) noSpread = v end
 })
 
-TabPlayer:CreateToggle({
-    Name = "Anti Ragdoll",
+TabPlayer:Toggle({
+    Title = "Anti Ragdoll",
     Callback = function(v) antiRagdoll = v end
 })
 
--- =====================================================
--- ARSENAL TAB
--- =====================================================
-TabArsenal:CreateSection({ Name = "Arsenal Mods" })
+-- =================================
+-- TAB ARSENAL
+-- =================================
+TabArsenal:Section("Arsenal Mods")
 
-TabArsenal:CreateToggle({
-    Name = "Fast Fire Rate",
+TabArsenal:Toggle({
+    Title = "Fast Fire Rate",
     Callback = function(v)
         fastFire = v
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
@@ -351,8 +346,8 @@ TabArsenal:CreateToggle({
     end
 })
 
-TabArsenal:CreateToggle({
-    Name = "Fast Reload",
+TabArsenal:Toggle({
+    Title = "Fast Reload",
     Callback = function(v)
         fastReload = v
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
@@ -364,8 +359,8 @@ TabArsenal:CreateToggle({
     end
 })
 
-TabArsenal:CreateToggle({
-    Name = "Infinite Ammo",
+TabArsenal:Toggle({
+    Title = "Infinite Ammo",
     Callback = function(v)
         infiniteAmmo = v
         if v then
@@ -379,8 +374,8 @@ TabArsenal:CreateToggle({
     end
 })
 
-TabArsenal:CreateToggle({
-    Name = "No Recoil (Arsenal)",
+TabArsenal:Toggle({
+    Title = "No Recoil (Arsenal)",
     Callback = function(v)
         arsenalNoRecoil = v
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
@@ -392,8 +387,8 @@ TabArsenal:CreateToggle({
     end
 })
 
-TabArsenal:CreateToggle({
-    Name = "No Spread (Arsenal)",
+TabArsenal:Toggle({
+    Title = "No Spread (Arsenal)",
     Callback = function(v)
         arsenalNoSpread = v
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
@@ -406,11 +401,10 @@ TabArsenal:CreateToggle({
     end
 })
 
--- Unlock All & Skin Changer
-TabArsenal:CreateSection({ Name = "Unlock & Skin Changer" })
+TabArsenal:Section("Unlock & Skin Changer")
 
-TabArsenal:CreateButton({
-    Name = "Unlock All Items",
+TabArsenal:Button({
+    Title = "Unlock All Items",
     Callback = function()
         local items = ReplicatedStorage:FindFirstChild("ItemData")
         if not items then return end
@@ -434,7 +428,7 @@ TabArsenal:CreateButton({
                 end
             end
         end
-        WindUI:Notify({ Title = "Unlock All", Description = "All items unlocked!", Icon = "check", Duration = 3 })
+        Window:Notify({ Title = "Unlock All", Description = "All items unlocked!", Duration = 3 })
     end
 })
 
@@ -480,49 +474,44 @@ end
 
 -- Dropdown skin
 local charSkins = GetSkinList("Character")
-TabArsenal:CreateDropdown({
-    Name = "Character Skin",
-    Options = charSkins,
-    Default = charSkins[1] or "Default",
+TabArsenal:Dropdown({
+    Title = "Character Skin",
+    List = charSkins,
     Callback = function(v) ChangeSkin("Character", v) end
 })
 
 local meleeSkins = GetSkinList("Melee")
-TabArsenal:CreateDropdown({
-    Name = "Melee Skin",
-    Options = meleeSkins,
-    Default = meleeSkins[1] or "Default",
+TabArsenal:Dropdown({
+    Title = "Melee Skin",
+    List = meleeSkins,
     Callback = function(v) ChangeSkin("Melee", v) end
 })
 
 local gunSkins = GetSkinList("Gun")
-TabArsenal:CreateDropdown({
-    Name = "Gun Skin",
-    Options = gunSkins,
-    Default = gunSkins[1] or "Default",
+TabArsenal:Dropdown({
+    Title = "Gun Skin",
+    List = gunSkins,
     Callback = function(v) ChangeSkin("GunSkin", v) end
 })
 
 local killSkins = GetSkinList("KillEffect")
-TabArsenal:CreateDropdown({
-    Name = "Kill Effect",
-    Options = killSkins,
-    Default = killSkins[1] or "Default",
+TabArsenal:Dropdown({
+    Title = "Kill Effect",
+    List = killSkins,
     Callback = function(v) ChangeSkin("KillEffect", v) end
 })
 
 local announcerSkins = GetSkinList("Announcer")
-TabArsenal:CreateDropdown({
-    Name = "Announcer",
-    Options = announcerSkins,
-    Default = announcerSkins[1] or "Default",
+TabArsenal:Dropdown({
+    Title = "Announcer",
+    List = announcerSkins,
     Callback = function(v) ChangeSkin("Announcer", v) end
 })
 
--- =====================================================
+-- =================================
 -- SILENT HITBOX
--- =====================================================
-TabArsenal:CreateSection({ Name = "Silent Hitbox" })
+-- =================================
+TabArsenal:Section("Silent Hitbox")
 
 local function getTargetParts(char)
     local parts = {}
@@ -618,18 +607,17 @@ local function stopHitbox()
     end
 end
 
-TabArsenal:CreateToggle({
-    Name = "Enable Silent Hitbox",
+TabArsenal:Toggle({
+    Title = "Enable Silent Hitbox",
     Callback = function(v)
         silentHitbox = v
         if v then startHitbox() else stopHitbox() end
     end
 })
 
-TabArsenal:CreateDropdown({
-    Name = "Target Parts",
-    Options = {"All", "Head", "Torso", "Legs"},
-    Default = "All",
+TabArsenal:Dropdown({
+    Title = "Target Parts",
+    List = {"All", "Head", "Torso", "Legs"},
     Callback = function(v)
         targetPartsChoice = v
         if silentHitbox then
@@ -639,36 +627,34 @@ TabArsenal:CreateDropdown({
     end
 })
 
-TabArsenal:CreateSlider({
-    Name = "Hitbox Expansion",
+TabArsenal:Slider({
+    Title = "Hitbox Expansion",
     Min = 1,
     Max = 30,
     Default = 13,
-    Suffix = "x",
     Callback = function(v) hitboxExpansion = v end
 })
 
-TabArsenal:CreateSlider({
-    Name = "Hitbox Alpha",
+TabArsenal:Slider({
+    Title = "Hitbox Alpha",
     Min = 0,
     Max = 10,
     Default = 3,
-    Suffix = "/10",
     Callback = function(v) hitboxAlpha = v / 10 end
 })
 
-TabArsenal:CreateButton({
-    Name = "Reset Hitbox",
+TabArsenal:Button({
+    Title = "Reset Hitbox",
     Callback = function()
         stopHitbox()
         if silentHitbox then startHitbox() end
-        WindUI:Notify({ Title = "Reset", Description = "Hitbox reset to default", Icon = "refresh-cw", Duration = 2 })
+        Window:Notify({ Title = "Reset", Description = "Hitbox reset to default", Duration = 2 })
     end
 })
 
--- =====================================================
--- AIMBOT FUNCTIONS (Camera & Silent)
--- =====================================================
+-- =================================
+-- AIMBOT FUNCTIONS
+-- =================================
 local function isVisible(part)
     if not useVisCheck or not part then return true end
     local success, result = pcall(function()
@@ -822,9 +808,9 @@ pcall(function()
     end
 end)
 
--- =====================================================
+-- =================================
 -- ESP FUNCTIONS
--- =====================================================
+-- =================================
 local function clearESP()
     for _, h in pairs(highlightObjects) do pcall(function() h:Destroy() end) end
     highlightObjects = {}
@@ -874,9 +860,9 @@ task.spawn(function()
     end
 end)
 
--- =====================================================
+-- =================================
 -- NO RECOIL / NO SPREAD / ANTI RAGDOLL
--- =====================================================
+-- =================================
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -910,9 +896,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- =====================================================
+-- =================================
 -- FPS & PING UPDATER
--- =====================================================
+-- =================================
 local fpsCounter = 0
 local fpsTime = 0
 
@@ -930,13 +916,13 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- =====================================================
+-- =================================
 -- SELESAI
--- =====================================================
-print("✅ W424HUB - WindUI Edition loaded!")
-WindUI:Notify({
+-- =================================
+Window:Notify({
     Title = "W424HUB",
-    Description = "All features ready!",
-    Icon = "check",
+    Description = "Loaded with W424_UI!",
     Duration = 3
 })
+
+print("✅ W424HUB - W424_UI Edition loaded!")
