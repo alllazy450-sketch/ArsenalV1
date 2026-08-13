@@ -181,7 +181,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 -- ========================================
--- TAB VISUAL (ESP, LINE, REDUCE MAP)
+-- TAB VISUAL (ESP, LINE, REDUCE MAP, FOV SLIDER)
 -- ========================================
 Window:AddParagraph(TabVisual, "ESP Chams", "Highlight enemies")
 
@@ -360,7 +360,24 @@ RunService.RenderStepped:Connect(updateLineESP)
 Players.PlayerAdded:Connect(updateLineESP)
 Players.PlayerRemoving:Connect(updateLineESP)
 
--- REDUCE MAP
+-- ===== FOV SLIDER (FPS STYLE) =====
+Window:AddDivider(TabVisual, "FOV (First Person Shooter)")
+local fovSliderValue = 70
+Window:AddSlider(TabVisual, "Field of View", "60-120 (CSGO/Valorant style)", 60, 120, 70, function(v)
+    fovSliderValue = v
+    pcall(function()
+        workspace.CurrentCamera.FieldOfView = v
+    end)
+end, "FOVSlider", true)
+
+-- Set default FOV to 70 saat load
+pcall(function()
+    if workspace.CurrentCamera then
+        workspace.CurrentCamera.FieldOfView = 70
+    end
+end)
+
+-- ===== REDUCE MAP =====
 Window:AddDivider(TabVisual, "Optimization")
 local reduceMap = false
 Window:AddToggle(TabVisual, "Reduce Map", "Disable minimap", false, function(s)
@@ -556,7 +573,7 @@ local announcerSkins = GetSkinList("Announcer")
 Window:AddDropdown(TabArsenal, "Announcer", "Select announcer voice", announcerSkins, false, announcerSkins[1] or "Default", function(v) ChangeArsenalSkin("Announcer", v) end)
 
 -- ===== SILENT HITBOX (EXPANSION) =====
-Window:AddDivider(TabArsenal, "Silent Hitbox Expansion")
+Window:AddDivider(TabArsenal, "Hitbox Expansion")
 local silentHitbox = false
 local hitboxExpansion = 13
 local hitboxAlpha = 0.3
@@ -656,7 +673,7 @@ local function stopSilentHitbox()
     end
 end
 
-Window:AddToggle(TabArsenal, "Silent Hitbox", "Expand enemy hitboxes", false, function(v)
+Window:AddToggle(TabArsenal, "Hitbox Expansion", "Expand enemy hitboxes", false, function(v)
     silentHitbox = v
     if v then startSilentHitbox() else stopSilentHitbox() end
 end)
@@ -664,8 +681,8 @@ Window:AddDropdown(TabArsenal, "Target Parts", "Select body part", {"All","Head"
     targetPartsChoice = v
     if silentHitbox then stopSilentHitbox(); startSilentHitbox() end
 end)
-Window:AddSlider(TabArsenal, "Hitbox Expansion", "Size (1-30)", 1, 30, 13, function(v) hitboxExpansion = v end)
-Window:AddSlider(TabArsenal, "Hitbox Alpha", "Transparency (0-10)", 0, 10, 3, function(v) hitboxAlpha = v / 10 end)
+Window:AddSlider(TabArsenal, "Hitbox Size", "1-30", 1, 30, 13, function(v) hitboxExpansion = v end)
+Window:AddSlider(TabArsenal, "Hitbox Alpha", "Transparency 0-10", 0, 10, 3, function(v) hitboxAlpha = v / 10 end)
 Window:AddButton(TabArsenal, "Reset Hitbox", "Restore default sizes", function()
     stopSilentHitbox()
     if silentHitbox then startSilentHitbox() end
@@ -751,4 +768,4 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-print("✅ W424HUB FINAL loaded - Silent Aim removed, only Hitbox Expansion remains.")
+print("✅ W424HUB FINAL loaded - Hitbox Expansion + FOV Slider ready!")
