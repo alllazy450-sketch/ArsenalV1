@@ -1,5 +1,5 @@
--- ========== W424HUB v3.8 ULTRA LIGHT ==========
-print("=== LOADING W424HUB LIGHT ===")
+-- ========== W424HUB v3.8 FINAL ==========
+print("=== LOADING W424HUB FINAL ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
 if not Kairo then return warn("Kairo failed") end
@@ -39,12 +39,11 @@ local TabPlayer = Window:CreateTab("Player", "rbxassetid://16932740082")
 local TabArsenal = Window:CreateTab("Arsenal", "rbxassetid://16932740082")
 
 -- ========================================
--- TAB AIM (SEMUA FITUR MANUAL)
+-- TAB AIM (AIMBOT CAMERA SAJA)
 -- ========================================
-Window:AddParagraph(TabAim, "Aimbot", "Enable to start")
+Window:AddParagraph(TabAim, "Aimbot", "Camera aimbot")
 
 local aimbotEnabled = false
-local aimMode = "Camera"
 local aimTrigger = "On Shoot"
 local isShooting = false
 local targetPartName = "Head"
@@ -57,12 +56,8 @@ local usePrediction = false
 local predictionFactor = 0.2
 local useVisibilityCheck = true
 local target = nil
-local silentAimEnabled = false
-local silentAimFOV = 30
-local autoShootEnabled = false
-local autoShootDelay = 0.1
 
--- VISIBILITY (ringan)
+-- VISIBILITY
 local function isVisible(part)
     if not useVisibilityCheck or not part then return true end
     local origin = camera.CFrame.Position
@@ -78,22 +73,7 @@ local function isVisible(part)
     return true
 end
 
--- EXPANDED HITBOX (untuk silent aim)
-local function getExpandedTargetPosition(character)
-    if not character then return nil end
-    local possible = {"Head","HumanoidRootPart","Torso","UpperTorso","RightUpperLeg","LeftUpperLeg","RightLowerLeg","LeftLowerLeg"}
-    local bestPart, maxSize = nil, 0
-    for _, name in ipairs(possible) do
-        local part = character:FindFirstChild(name)
-        if part and part.Size.Magnitude > maxSize then
-            maxSize = part.Size.Magnitude
-            bestPart = part
-        end
-    end
-    return bestPart
-end
-
--- GET BEST TARGET (hanya dipanggil jika aimbot aktif)
+-- GET BEST TARGET
 local function getBestTarget()
     if not aimbotEnabled then return nil end
     local center = camera.ViewportSize / 2
@@ -112,14 +92,9 @@ local function getBestTarget()
         if not hum or hum.Health <= 0 then continue end
         if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
 
-        local part
-        if silentAimEnabled then
-            part = getExpandedTargetPosition(c)
-        else
-            part = headshotOnly and c:FindFirstChild("Head") or c:FindFirstChild(targetPartName)
-            if not part then
-                part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
-            end
+        local part = headshotOnly and c:FindFirstChild("Head") or c:FindFirstChild(targetPartName)
+        if not part then
+            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
         end
         if not part then continue end
 
@@ -127,7 +102,7 @@ local function getBestTarget()
         if usePrediction then
             targetPos = targetPos + (part.Velocity or Vector3.new()) * predictionFactor
         end
-        if headshotOnly and not silentAimEnabled then
+        if headshotOnly then
             targetPos = targetPos + Vector3.new(0, 0.5, 0)
         end
 
@@ -138,8 +113,7 @@ local function getBestTarget()
         local pos, on = camera:WorldToViewportPoint(targetPos)
         if on then
             local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-            local fovLimit = silentAimEnabled and silentAimFOV or fovRadius
-            if screenDist <= fovLimit and screenDist < bestDist then
+            if screenDist <= fovRadius and screenDist < bestDist then
                 bestDist = screenDist
                 best = { Part = part, Position = targetPos, Player = p }
             end
@@ -148,7 +122,7 @@ local function getBestTarget()
     return best
 end
 
--- FOV CIRCLE (ringan)
+-- FOV CIRCLE
 local fovGui = Instance.new("ScreenGui")
 fovGui.Name = "W424_FOV_GUI"
 fovGui.Parent = CoreGui
@@ -167,9 +141,8 @@ Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1,0)
 
 local function updateFOVSize() fovFrame.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end
 
--- UI AIMBOT
+-- UI
 Window:AddToggle(TabAim, "Aimbot", "Enable", false, function(s) aimbotEnabled = s end)
-Window:AddDropdown(TabAim, "Mode", "Camera / Silent", {"Camera","Silent"}, false, "Camera", function(v) aimMode = v end)
 Window:AddDropdown(TabAim, "Trigger", "When to aim", {"On Shoot","Always"}, false, "On Shoot", function(v) aimTrigger = v end)
 Window:AddToggle(TabAim, "FOV Circle", "Show circle", false, function(s) fovFrame.Visible = s end)
 Window:AddSlider(TabAim, "FOV Radius", "30-400", 30, 400, 100, function(v) fovRadius = v; updateFOVSize() end)
@@ -182,71 +155,6 @@ Window:AddToggle(TabAim, "Headshot Only", "Force head", false, function(s) heads
 Window:AddDropdown(TabAim, "Target Part", "Body part", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) if not headshotOnly then targetPartName = v end end)
 Window:AddSlider(TabAim, "Smoothness", "1-10", 1, 10, 10, function(v) aimSmoothness = v/10 end)
 
-Window:AddDivider(TabAim, "Silent Aim + Hitbox")
-Window:AddToggle(TabAim, "Silent Aim", "Aim without moving camera", false, function(s)
-    silentAimEnabled = s
-    if s then aimMode = "Silent" end
-end)
-Window:AddSlider(TabAim, "Silent FOV", "1-100", 1, 100, 30, function(v) silentAimFOV = v end)
-Window:AddToggle(TabAim, "Auto Shoot", "Shoot automatically", false, function(s) autoShootEnabled = s end)
-Window:AddSlider(TabAim, "Auto Shoot Delay", "0.05-0.5s", 5, 50, 10, function(v) autoShootDelay = v/100 end)
-
--- Tombol Install Silent Aim (manual, tidak otomatis)
-Window:AddButton(TabAim, "Install Silent Aim Hook", "Click once after game loads", function()
-    task.spawn(function()
-        local hooked = false
-        local gc = getgc()
-        for i, v in pairs(gc) do
-            if hooked then break end
-            if type(v) == "function" and islclosure(v) then
-                local constants = debug.getconstants(v)
-                local hasKeyword = false
-                for _, c in pairs(constants) do
-                    if type(c) == "string" and (c:lower():find("fire") or c:lower():find("shoot") or c:lower():find("ray") or c:lower():find("bullet")) then
-                        hasKeyword = true; break
-                    end
-                end
-                if hasKeyword then
-                    local old = v
-                    hookfunction(v, function(p1, p2)
-                        if aimbotEnabled and aimMode == "Silent" then
-                            local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
-                            if canAim then
-                                local best = getBestTarget()
-                                if best then
-                                    local myChar = LocalPlayer.Character
-                                    if myChar then
-                                        local startPart = myChar:FindFirstChild("Head") or myChar:FindFirstChild("HumanoidRootPart")
-                                        if startPart then
-                                            pcall(function()
-                                                local dir = (best.Position - startPart.Position)
-                                                if type(p1) == "userdata" and p1:IsA("Ray") then
-                                                    p1 = Ray.new(startPart.Position, dir)
-                                                elseif type(p2) == "userdata" and p2:IsA("CFrame") then
-                                                    p2 = CFrame.new(startPart.Position, startPart.Position + dir)
-                                                elseif type(p1) == "Vector3" and type(p2) == "Vector3" then
-                                                    p1 = startPart.Position
-                                                    p2 = dir
-                                                end
-                                            end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        return old(p1, p2)
-                    end)
-                    hooked = true
-                    Window:Notify({Title="Silent Aim", Description="Hook installed!", Color=Color3.fromRGB(0,255,0), Delay=2})
-                end
-            end
-        end
-        if not hooked then
-            Window:Notify({Title="Silent Aim", Description="Hook failed! Try different game.", Color=Color3.fromRGB(255,0,0), Delay=3})
-        end
-    end)
-end)
-
 -- INPUT SHOOT
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = true end
@@ -255,50 +163,25 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = false end
 end)
 
--- MAIN LOOP (hanya jalan jika aimbot aktif)
+-- MAIN LOOP (hanya camera aimbot)
 RunService.RenderStepped:Connect(function(dt)
     if not aimbotEnabled then return end
-
-    -- Camera Aimbot
-    if aimMode == "Camera" then
-        local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
-        if canAim then
-            local best = getBestTarget()
-            if best then
-                target = best
-                local targetPos = best.Position
-                local currentCF = camera.CFrame
-                local targetCF = CFrame.new(currentCF.Position, targetPos)
-                local smoothFactor = 1 - math.exp(-aimSmoothness * dt * 5)
-                camera.CFrame = currentCF:Lerp(targetCF, smoothFactor)
-            end
-        end
-    end
-
-    -- Auto Shoot
-    if autoShootEnabled and target then
-        local pos, on = camera:WorldToViewportPoint(target.Position)
-        if on and (Vector2.new(pos.X, pos.Y) - camera.ViewportSize/2).Magnitude < 15 then
-            pcall(function()
-                local mouse = LocalPlayer:GetMouse()
-                if mouse then
-                    mouse.Button1Down:Fire()
-                    task.wait(autoShootDelay)
-                    mouse.Button1Up:Fire()
-                end
-            end)
-        end
-    end
-
-    -- Silent Aim (update target saja)
-    if aimMode == "Silent" and silentAimEnabled then
+    local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
+    if canAim then
         local best = getBestTarget()
-        if best then target = best end
+        if best then
+            target = best
+            local targetPos = best.Position
+            local currentCF = camera.CFrame
+            local targetCF = CFrame.new(currentCF.Position, targetPos)
+            local smoothFactor = 1 - math.exp(-aimSmoothness * dt * 5)
+            camera.CFrame = currentCF:Lerp(targetCF, smoothFactor)
+        end
     end
 end)
 
 -- ========================================
--- TAB VISUAL (ESP & LINEMANUAL)
+-- TAB VISUAL (ESP, LINE, REDUCE MAP)
 -- ========================================
 Window:AddParagraph(TabVisual, "ESP Chams", "Highlight enemies")
 
@@ -386,7 +269,7 @@ Players.PlayerAdded:Connect(updateESP)
 Players.PlayerRemoving:Connect(function(p) if highlightObjects[p] then highlightObjects[p]:Destroy(); highlightObjects[p] = nil end end)
 RunService.RenderStepped:Connect(updateESP)
 
--- ===== LINE ESP =====
+-- LINE ESP
 Window:AddDivider(TabVisual, "Line ESP (Tracer)")
 local lineESPEnabled = false
 local lineColor = Color3.fromRGB(0, 255, 255)
@@ -477,7 +360,7 @@ RunService.RenderStepped:Connect(updateLineESP)
 Players.PlayerAdded:Connect(updateLineESP)
 Players.PlayerRemoving:Connect(updateLineESP)
 
--- ===== REDUCE MAP (AMAN) =====
+-- REDUCE MAP
 Window:AddDivider(TabVisual, "Optimization")
 local reduceMap = false
 Window:AddToggle(TabVisual, "Reduce Map", "Disable minimap", false, function(s)
@@ -554,7 +437,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ========================================
--- TAB ARSENAL (SILENT HITBOX)
+-- TAB ARSENAL (SILENT HITBOX EXPANSION)
 -- ========================================
 Window:AddParagraph(TabArsenal, "Arsenal Mods", "Fast Fire, Reload, Skins")
 
@@ -672,8 +555,8 @@ Window:AddDropdown(TabArsenal, "Kill Effect", "Select kill effect", killSkins, f
 local announcerSkins = GetSkinList("Announcer")
 Window:AddDropdown(TabArsenal, "Announcer", "Select announcer voice", announcerSkins, false, announcerSkins[1] or "Default", function(v) ChangeArsenalSkin("Announcer", v) end)
 
--- ===== SILENT HITBOX =====
-Window:AddDivider(TabArsenal, "Silent Hitbox")
+-- ===== SILENT HITBOX (EXPANSION) =====
+Window:AddDivider(TabArsenal, "Silent Hitbox Expansion")
 local silentHitbox = false
 local hitboxExpansion = 13
 local hitboxAlpha = 0.3
@@ -868,4 +751,4 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-print("✅ W424HUB LIGHT loaded - No auto-heavy processes, enable features manually.")
+print("✅ W424HUB FINAL loaded - Silent Aim removed, only Hitbox Expansion remains.")
