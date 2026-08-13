@@ -173,7 +173,7 @@ local usePrediction = false
 local predictionFactor = 0.2
 local useVisibilityCheck = true
 
--- Variabel Silent Aim (tanpa Actors, pakai hook langsung)
+-- Variabel Silent Aim (tanpa Actors)
 local silentAimEnabled = false
 local silentAimFOV = 150
 local silentAimDistance = 300
@@ -182,10 +182,9 @@ local silentAimWallbang = false
 local silentAimTeamCheck = true
 local silentAimPrediction = false
 local silentAimPredFactor = 0.2
-local silentAimTarget = nil
 local silentHookActive = false
 local silentOriginalCast = nil
-local aimMode = "Camera" -- "Camera" atau "Silent"
+local aimMode = "Camera"
 
 -- FOV Circle
 local fovGui = Instance.new("ScreenGui")
@@ -239,7 +238,6 @@ local function getSilentBestTarget()
         local dist = (targetPos - myPos).Magnitude
         if dist > silentAimDistance then continue end
 
-        -- Wallbang check
         if not silentAimWallbang then
             local origin = camera.CFrame.Position
             local params = RaycastParams.new()
