@@ -28,7 +28,7 @@ local success, Window = pcall(function()
     return Kairo:CreateWindow({
         Title = "W424HUB",
         Theme = "Ocean",   -- Dark blue theme
-        Size = UDim2.fromOffset(300, 580),
+        Size = UDim2.fromOffset(480, 480),
         Center = true,
         Draggable = true,
         Resize = false,
