@@ -1,5 +1,5 @@
--- ========== W424HUB v3.8 FINAL ==========
-print("=== LOADING W424HUB FINAL ===")
+-- ========== W424HUB v3.9 FINAL ==========
+print("=== LOADING W424HUB v3.9 ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
 if not Kairo then return warn("Kairo failed") end
@@ -14,16 +14,17 @@ local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- WINDOW
 local Window = Kairo:CreateWindow({
     Title = "W424HUB",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 300),
+    Size = UDim2.fromOffset(500, 380),
     Center = true,
     Draggable = true,
     Resize = false,
-    Badges = {"v3.8"},
+    Badges = {"v3.9"},
     MinimizeKey = Enum.KeyCode.RightShift,
     MinimizeButton = true,
     Config = { Enabled = true, Folder = "W424HUB_Config", AutoLoad = true }
@@ -39,7 +40,7 @@ local TabPlayer = Window:CreateTab("Player", "rbxassetid://16932740082")
 local TabArsenal = Window:CreateTab("Arsenal", "rbxassetid://16932740082")
 
 -- ========================================
--- TAB AIM (AIMBOT CAMERA SAJA)
+-- TAB AIM (AIMBOT CAMERA + TRIGGERBOT)
 -- ========================================
 Window:AddParagraph(TabAim, "Aimbot", "Camera aimbot")
 
@@ -56,6 +57,12 @@ local usePrediction = false
 local predictionFactor = 0.2
 local useVisibilityCheck = true
 local target = nil
+
+-- TRIGGERBOT (AUTO SHOOT)
+local triggerbotEnabled = false
+local triggerDelay = 0.1
+local triggerFOV = 20
+local triggerCooldown = 0
 
 -- VISIBILITY
 local function isVisible(part)
@@ -75,7 +82,7 @@ end
 
 -- GET BEST TARGET
 local function getBestTarget()
-    if not aimbotEnabled then return nil end
+    if not aimbotEnabled and not triggerbotEnabled then return nil end
     local center = camera.ViewportSize / 2
     local best, bestDist = nil, math.huge
     local myChar = LocalPlayer.Character
@@ -155,6 +162,12 @@ Window:AddToggle(TabAim, "Headshot Only", "Force head", false, function(s) heads
 Window:AddDropdown(TabAim, "Target Part", "Body part", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) if not headshotOnly then targetPartName = v end end)
 Window:AddSlider(TabAim, "Smoothness", "1-10", 1, 10, 10, function(v) aimSmoothness = v/10 end)
 
+-- TRIGGERBOT UI
+Window:AddDivider(TabAim, "Triggerbot (Auto Shoot)")
+Window:AddToggle(TabAim, "Enable Triggerbot", "Shoot automatically when crosshair on enemy", false, function(v) triggerbotEnabled = v end)
+Window:AddSlider(TabAim, "Trigger Delay", "0.05-0.5s", 5, 50, 10, function(v) triggerDelay = v/100 end)
+Window:AddSlider(TabAim, "Trigger FOV", "Pixel radius from crosshair (5-50)", 5, 50, 20, function(v) triggerFOV = v end)
+
 -- INPUT SHOOT
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = true end
@@ -163,19 +176,68 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = false end
 end)
 
--- MAIN LOOP (hanya camera aimbot)
+-- MAIN LOOP (AIMBOT + TRIGGERBOT)
 RunService.RenderStepped:Connect(function(dt)
-    if not aimbotEnabled then return end
-    local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
-    if canAim then
-        local best = getBestTarget()
-        if best then
-            target = best
+    local best = nil
+
+    if aimbotEnabled or triggerbotEnabled then
+        best = getBestTarget()
+    end
+
+    -- AIMBOT
+    if aimbotEnabled and best then
+        local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
+        if canAim then
             local targetPos = best.Position
             local currentCF = camera.CFrame
             local targetCF = CFrame.new(currentCF.Position, targetPos)
             local smoothFactor = 1 - math.exp(-aimSmoothness * dt * 5)
             camera.CFrame = currentCF:Lerp(targetCF, smoothFactor)
+        end
+    end
+
+    -- TRIGGERBOT
+    if triggerbotEnabled and best then
+        local pos, onScreen = camera:WorldToViewportPoint(best.Position)
+        if onScreen then
+            local center = camera.ViewportSize / 2
+            local distFromCrosshair = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+
+            if distFromCrosshair < triggerFOV then
+                triggerCooldown = triggerCooldown - dt
+                if triggerCooldown <= 0 then
+                    triggerCooldown = triggerDelay
+
+                    pcall(function()
+                        local shootRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Shoot")
+                        if shootRemote then
+                            shootRemote:FireServer(best.Position)
+                        else
+                            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                            if remotes then
+                                local found = false
+                                for _, child in ipairs(remotes:GetChildren()) do
+                                    local name = child.Name:lower()
+                                    if name:find("shoot") or name:find("fire") or name:find("gun") then
+                                        child:FireServer(best.Position)
+                                        found = true
+                                        break
+                                    end
+                                end
+                                if not found then
+                                    VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                                    task.wait(0.05)
+                                    VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                                end
+                            else
+                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                                task.wait(0.05)
+                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                            end
+                        end
+                    end)
+                end
+            end
         end
     end
 end)
@@ -365,43 +427,113 @@ Window:AddDivider(TabVisual, "FOV (First Person Shooter)")
 local fovSliderValue = 70
 Window:AddSlider(TabVisual, "Field of View", "60-120 (CSGO/Valorant style)", 60, 120, 70, function(v)
     fovSliderValue = v
-    pcall(function()
-        workspace.CurrentCamera.FieldOfView = v
-    end)
+    pcall(function() workspace.CurrentCamera.FieldOfView = v end)
 end, "FOVSlider", true)
 
--- Set default FOV to 70 saat load
 pcall(function()
-    if workspace.CurrentCamera then
-        workspace.CurrentCamera.FieldOfView = 70
-    end
+    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = 70 end
 end)
 
--- ===== REDUCE MAP =====
-Window:AddDivider(TabVisual, "Optimization")
+-- ===== REDUCE MAP (SMOOTH VERSION) =====
+Window:AddDivider(TabVisual, "Minimap Optimization")
+
 local reduceMap = false
-Window:AddToggle(TabVisual, "Reduce Map", "Disable minimap", false, function(s)
-    reduceMap = s
-    pcall(function()
-        if s then
-            pcall(function() StarterGui:SetCore("MinimapEnabled", false) end)
-            for _, gui in ipairs(CoreGui:GetChildren()) do
-                pcall(function() if gui.Name and gui.Name:lower():find("minimap") then gui.Enabled = false end end)
+local mapOpacity = 1
+local minimapContainer = nil
+
+local function findMinimapContainer()
+    for _, gui in ipairs(CoreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local name = gui.Name:lower()
+            if name:find("minimap") or name:find("map") or name:find("hud") then
+                local vp = gui:FindFirstChildWhichIsA("ViewportFrame")
+                if vp then return gui end
             end
-            for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-                pcall(function() if gui.Name and gui.Name:lower():find("minimap") then gui.Enabled = false end end)
-            end
-        else
-            pcall(function() StarterGui:SetCore("MinimapEnabled", true) end)
-            for _, gui in ipairs(CoreGui:GetChildren()) do
-                pcall(function() if gui.Name and gui.Name:lower():find("minimap") then gui.Enabled = true end end)
-            end
-            for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-                pcall(function() if gui.Name and gui.Name:lower():find("minimap") then gui.Enabled = true end end)
-            end
+            local found = gui:FindFirstChild("Minimap", true) or gui:FindFirstChild("Map", true) or gui:FindFirstChild("ViewportFrame", true)
+            if found then return found.Parent or found end
         end
-    end)
+    end
+    for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local name = gui.Name:lower()
+            if name:find("minimap") or name:find("map") then
+                return gui
+            end
+            local found = gui:FindFirstChild("Minimap", true) or gui:FindFirstChild("Map", true) or gui:FindFirstChild("ViewportFrame", true)
+            if found then return found.Parent or found end
+        end
+    end
+    return nil
+end
+
+local function applyOpacityToChildren(parent, opacity)
+    if not parent then return end
+    for _, child in ipairs(parent:GetDescendants()) do
+        if child:IsA("ImageLabel") or child:IsA("ImageButton") or child:IsA("Frame") then
+            pcall(function()
+                if not child:GetAttribute("OriginalTransparency") then
+                    child:SetAttribute("OriginalTransparency", child.BackgroundTransparency or 0)
+                end
+                child.BackgroundTransparency = 1 - opacity
+                child.ImageTransparency = 1 - opacity
+            end)
+        end
+        if child:IsA("ViewportFrame") then
+            pcall(function() child.ImageTransparency = 1 - opacity end)
+        end
+    end
+end
+
+local function updateMinimap()
+    if not minimapContainer then minimapContainer = findMinimapContainer() end
+    if not minimapContainer then
+        pcall(function() StarterGui:SetCore("MinimapEnabled", not reduceMap) end)
+        return
+    end
+
+    if reduceMap then
+        minimapContainer.Visible = false
+        pcall(function() minimapContainer.Size = UDim2.new(0,0,0,0) end)
+    else
+        minimapContainer.Visible = true
+        pcall(function()
+            if minimapContainer:GetAttribute("OriginalSize") then
+                minimapContainer.Size = minimapContainer:GetAttribute("OriginalSize")
+            else
+                minimapContainer.Size = UDim2.new(1,0,1,0)
+            end
+        end)
+        applyOpacityToChildren(minimapContainer, mapOpacity)
+    end
+end
+
+Window:AddToggle(TabVisual, "Reduce Map", "Sembunyikan minimap sepenuhnya", false, function(s)
+    reduceMap = s
+    if not s then applyOpacityToChildren(minimapContainer, mapOpacity) end
+    updateMinimap()
 end)
+
+Window:AddSlider(TabVisual, "Map Opacity", "Transparansi minimap (0-100%)", 0, 100, 100, function(v)
+    mapOpacity = v / 100
+    if not reduceMap and minimapContainer then
+        applyOpacityToChildren(minimapContainer, mapOpacity)
+    end
+end, "MapOpacity", true)
+
+local function refreshMinimap()
+    minimapContainer = findMinimapContainer()
+    if minimapContainer then
+        if not minimapContainer:GetAttribute("OriginalSize") then
+            minimapContainer:SetAttribute("OriginalSize", minimapContainer.Size)
+        end
+        updateMinimap()
+    end
+end
+
+task.wait(1)
+refreshMinimap()
+CoreGui.ChildAdded:Connect(function() task.wait(0.5); refreshMinimap() end)
+LocalPlayer.PlayerGui.ChildAdded:Connect(function() task.wait(0.5); refreshMinimap() end)
 
 -- ========================================
 -- TAB PLAYER
@@ -768,4 +900,4 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-print("✅ W424HUB FINAL loaded - Hitbox Expansion + FOV Slider ready!")
+print("✅ W424HUB v3.9 loaded - Auto Shoot + Smooth Reduce Map ready!")
