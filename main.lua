@@ -1,4 +1,4 @@
--- ========== W424HUB v3.9 FINAL ==========
+-- ========== W424HUB v3.9 FINAL – AGGRESSIVE TRIGGERBOT ==========
 print("=== LOADING W424HUB v3.9 ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
@@ -20,7 +20,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local Window = Kairo:CreateWindow({
     Title = "W424HUB",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 380),
+    Size = UDim2.fromOffset(500, 450),
     Center = true,
     Draggable = true,
     Resize = false,
@@ -58,11 +58,15 @@ local predictionFactor = 0.2
 local useVisibilityCheck = true
 local target = nil
 
--- TRIGGERBOT (AUTO SHOOT)
+-- TRIGGERBOT (AGGRESSIVE)
 local triggerbotEnabled = false
 local triggerDelay = 0.1
-local triggerFOV = 20
+local triggerFOV = 30
 local triggerCooldown = 0
+local aggressiveMode = false
+local burstShots = 3
+local burstDelay = 0.03
+local autoRecoilReset = false
 
 -- VISIBILITY
 local function isVisible(part)
@@ -162,11 +166,29 @@ Window:AddToggle(TabAim, "Headshot Only", "Force head", false, function(s) heads
 Window:AddDropdown(TabAim, "Target Part", "Body part", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) if not headshotOnly then targetPartName = v end end)
 Window:AddSlider(TabAim, "Smoothness", "1-10", 1, 10, 10, function(v) aimSmoothness = v/10 end)
 
--- TRIGGERBOT UI
+-- TRIGGERBOT UI (AGGRESSIVE)
 Window:AddDivider(TabAim, "Triggerbot (Auto Shoot)")
 Window:AddToggle(TabAim, "Enable Triggerbot", "Shoot automatically when crosshair on enemy", false, function(v) triggerbotEnabled = v end)
-Window:AddSlider(TabAim, "Trigger Delay", "0.05-0.5s", 5, 50, 10, function(v) triggerDelay = v/100 end)
-Window:AddSlider(TabAim, "Trigger FOV", "Pixel radius from crosshair (5-50)", 5, 50, 20, function(v) triggerFOV = v end)
+Window:AddSlider(TabAim, "Trigger Delay", "0.01-0.5s (smaller = faster)", 1, 50, 10, function(v) triggerDelay = v/100 end)
+Window:AddSlider(TabAim, "Trigger FOV", "Pixel radius from crosshair (5-100)", 5, 100, 30, function(v) triggerFOV = v end)
+
+Window:AddToggle(TabAim, "Aggressive Mode", "Spam shoot! Faster than humanly possible", false, function(v)
+    aggressiveMode = v
+    if v then
+        triggerDelay = 0.01
+        triggerFOV = math.max(triggerFOV, 40)
+        Window:Notify({Title="Aggressive Mode ON", Description="Trigger will spam shots!", Color=Color3.fromRGB(255,0,0), Delay=2})
+    else
+        triggerDelay = 0.1
+        Window:Notify({Title="Aggressive Mode OFF", Description="Back to normal", Color=Color3.fromRGB(0,255,0), Delay=2})
+    end
+end)
+Window:AddSlider(TabAim, "Burst Shots", "Shots per trigger (1-10)", 1, 10, 3, function(v) burstShots = v end)
+Window:AddSlider(TabAim, "Burst Delay", "Delay between burst shots (0.01-0.1s)", 1, 10, 3, function(v) burstDelay = v/100 end)
+
+-- AUTO RECOIL RESET
+Window:AddDivider(TabAim, "Recoil Control")
+Window:AddToggle(TabAim, "Auto Recoil Reset", "Pull mouse down automatically", false, function(v) autoRecoilReset = v end)
 
 -- INPUT SHOOT
 UserInputService.InputBegan:Connect(function(input)
@@ -176,7 +198,7 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = false end
 end)
 
--- MAIN LOOP (AIMBOT + TRIGGERBOT)
+-- MAIN LOOP (AIMBOT + AGGRESSIVE TRIGGERBOT + RECOIL RESET)
 RunService.RenderStepped:Connect(function(dt)
     local best = nil
 
@@ -196,49 +218,82 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- TRIGGERBOT
+    -- ===== AGGRESSIVE TRIGGERBOT =====
     if triggerbotEnabled and best then
         local pos, onScreen = camera:WorldToViewportPoint(best.Position)
         if onScreen then
             local center = camera.ViewportSize / 2
             local distFromCrosshair = (Vector2.new(pos.X, pos.Y) - center).Magnitude
 
-            if distFromCrosshair < triggerFOV then
-                triggerCooldown = triggerCooldown - dt
-                if triggerCooldown <= 0 then
-                    triggerCooldown = triggerDelay
+            local currentFOV = aggressiveMode and triggerFOV * 1.5 or triggerFOV
 
-                    pcall(function()
-                        local shootRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Shoot")
-                        if shootRemote then
-                            shootRemote:FireServer(best.Position)
-                        else
-                            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                            if remotes then
-                                local found = false
-                                for _, child in ipairs(remotes:GetChildren()) do
-                                    local name = child.Name:lower()
-                                    if name:find("shoot") or name:find("fire") or name:find("gun") then
-                                        child:FireServer(best.Position)
-                                        found = true
-                                        break
+            if distFromCrosshair < currentFOV then
+                triggerCooldown = triggerCooldown - dt
+
+                local effectiveDelay = aggressiveMode and triggerDelay * 0.3 or triggerDelay
+                effectiveDelay = math.max(effectiveDelay, 0.005)
+
+                if triggerCooldown <= 0 then
+                    triggerCooldown = effectiveDelay
+
+                    local shotsToFire = aggressiveMode and burstShots or 1
+
+                    for i = 1, shotsToFire do
+                        pcall(function()
+                            local shootRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Shoot")
+                            if shootRemote then
+                                shootRemote:FireServer(best.Position)
+                            else
+                                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                                if remotes then
+                                    local found = false
+                                    for _, child in ipairs(remotes:GetChildren()) do
+                                        local name = child.Name:lower()
+                                        if name:find("shoot") or name:find("fire") or name:find("gun") then
+                                            child:FireServer(best.Position)
+                                            found = true
+                                            break
+                                        end
                                     end
-                                end
-                                if not found then
+                                    if not found then
+                                        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                                        task.wait(0.01)
+                                        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                                    end
+                                else
                                     VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                                    task.wait(0.05)
+                                    task.wait(0.01)
                                     VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
                                 end
-                            else
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                                task.wait(0.05)
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
                             end
+                        end)
+
+                        if i < shotsToFire then
+                            local burstWait = aggressiveMode and burstDelay * 0.5 or burstDelay
+                            task.wait(math.max(burstWait, 0.005))
                         end
-                    end)
+                    end
+
+                    if aggressiveMode then
+                        triggerCooldown = effectiveDelay * 0.5
+                    end
                 end
+            else
+                triggerCooldown = 0
             end
         end
+    end
+
+    -- AUTO RECOIL RESET
+    if autoRecoilReset and triggerbotEnabled and best then
+        pcall(function()
+            local screenPos, on = camera:WorldToViewportPoint(best.Position)
+            if on then
+                local center = camera.ViewportSize / 2
+                local offsetY = (screenPos.Y - center.Y) * 0.5
+                VirtualInputManager:SendMouseMovement(0, offsetY, game)
+            end
+        end)
     end
 end)
 
@@ -900,4 +955,4 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
-print("✅ W424HUB v3.9 loaded - Auto Shoot + Smooth Reduce Map ready!")
+print("✅ W424HUB v3.9 FINAL loaded – Aggressive Triggerbot + Burst + Recoil Reset ready!")
