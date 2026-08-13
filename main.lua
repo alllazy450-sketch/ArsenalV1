@@ -19,6 +19,29 @@ Window:Tag({
     Radius = 13
 })
 
+-- ===== TARUH DEBUG DI SINI =====
+print("=== Methods in Window ===")
+for k, v in pairs(Window) do
+    if type(v) == "function" then
+        print(k)
+    end
+end
+-- ===== SAMPAI SINI =====
+
+-- =================================
+-- BUAT TAB
+-- =================================
+local TabAim = Window:Tab({   -- <-- INI YANG ERROR
+    Title = "Aim",
+    Icon = "rbxassetid://109462748520607"
+})
+
+Window:Tag({
+    Title = "Executor: " .. identifyexecutor(),
+    Color = Color3.fromRGB(100, 100, 100),
+    Radius = 13
+})
+
 -- =================================
 -- VARIABLES
 -- =================================
