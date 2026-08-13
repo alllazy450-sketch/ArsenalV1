@@ -19,27 +19,75 @@ Window:Tag({
     Radius = 13
 })
 
--- ===== TARUH DEBUG DI SINI =====
-print("=== Methods in Window ===")
+-- =================================
+-- DEBUG: Cari method untuk membuat Tab
+-- =================================
+local createTabMethod = nil
+
+print("=== Mencari method untuk membuat Tab ===")
 for k, v in pairs(Window) do
     if type(v) == "function" then
-        print(k)
+        local name = string.lower(k)
+        print(" - Method:", k)
+        if name:find("tab") and (name:find("create") or name:find("add") or name:find("new")) then
+            createTabMethod = k
+            print("✅ Method ditemukan:", k)
+        end
     end
 end
--- ===== SAMPAI SINI =====
+
+-- Jika tidak ditemukan, coba beberapa nama umum
+if not createTabMethod then
+    local possibleNames = {"CreateTab", "AddTab", "NewTab", "Tab"}
+    for _, name in ipairs(possibleNames) do
+        if Window[name] and type(Window[name]) == "function" then
+            createTabMethod = name
+            print("✅ Fallback method:", name)
+            break
+        end
+    end
+end
+
+if not createTabMethod then
+    warn("❌ Gagal menemukan method untuk membuat Tab! UI tidak akan berfungsi.")
+    return
+end
+
+-- Fungsi pembuat tab yang aman
+local function CreateTabSafe(params)
+    return Window[createTabMethod](Window, params)
+end
 
 -- =================================
--- BUAT TAB
+-- BUAT TAB dengan method yang ditemukan
 -- =================================
-local TabAim = Window:Tab({   -- <-- INI YANG ERROR
+local TabAim = CreateTabSafe({
     Title = "Aim",
     Icon = "rbxassetid://109462748520607"
 })
 
-Window:Tag({
-    Title = "Executor: " .. identifyexecutor(),
-    Color = Color3.fromRGB(100, 100, 100),
-    Radius = 13
+local TabVisual = CreateTabSafe({
+    Title = "Visual",
+    Icon = "rbxassetid://109462748520607"
+})
+
+local TabPlayer = CreateTabSafe({
+    Title = "Player",
+    Icon = "rbxassetid://109462748520607"
+})
+
+local TabArsenal = CreateTabSafe({
+    Title = "Arsenal",
+    Icon = "rbxassetid://109462748520607"
+})
+
+-- =================================
+-- NOTIFIKASI AWAL
+-- =================================
+Window:Notify({
+    Title = "W424HUB",
+    Description = "Loaded with W424_UI!",
+    Duration = 3
 })
 
 -- =================================
@@ -106,29 +154,6 @@ local reduceMap = false
 local statsOn = false
 local statsFrame = nil
 local statsText = nil
-
--- =================================
--- BUAT TAB
--- =================================
-local TabAim = Window:Tab({
-    Title = "Aim",
-    Icon = "rbxassetid://109462748520607"
-})
-
-local TabVisual = Window:Tab({
-    Title = "Visual",
-    Icon = "rbxassetid://109462748520607"
-})
-
-local TabPlayer = Window:Tab({
-    Title = "Player",
-    Icon = "rbxassetid://109462748520607"
-})
-
-local TabArsenal = Window:Tab({
-    Title = "Arsenal",
-    Icon = "rbxassetid://109462748520607"
-})
 
 -- =================================
 -- TAB AIM - AIMBOT
@@ -942,10 +967,4 @@ end)
 -- =================================
 -- SELESAI
 -- =================================
-Window:Notify({
-    Title = "W424HUB",
-    Description = "Loaded with W424_UI!",
-    Duration = 3
-})
-
 print("✅ W424HUB - W424_UI Edition loaded!")
