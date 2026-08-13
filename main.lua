@@ -1,28 +1,43 @@
-print("=== W424HUB - VoltilsUI Edition Loading ===")
+print("=== W424HUB - VoltilsUI Edition ===")
 
 -- =============================================
--- [1] LOAD VOLTILSUI
+-- [1] LOAD VOLTILSUI dengan error handling
 -- =============================================
-local VoltilsUI = loadstring(game:HttpGet("https://bloxvault.org/load/qLALM"))()[reference:8]
+local VoltilsUI
+local loadSuccess, loadErr = pcall(function()
+    VoltilsUI = loadstring(game:HttpGet("https://bloxvault.org/load/qLALM"))()
+end)
+
+if not loadSuccess or not VoltilsUI then
+    warn("❌ Gagal load VoltilsUI! Error:", loadErr or "Library nil")
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "W424HUB Error",
+        Text = "Gagal load VoltilsUI! Cek koneksi atau gunakan executor yang support.",
+        Duration = 5
+    })
+    return
+else
+    print("✅ VoltilsUI loaded successfully!")
+end
 
 -- =============================================
--- [2] INIT WINDOW
+-- [2] INIT WINDOW (tanpa IntroSoundId)
 -- =============================================
 local UI = VoltilsUI:Init({
     title = "W424HUB",
     company = "W424",
     DiscordInvite = "discord.gg/example",
-    LogoIcon = "93061773121162",  -- asset ID icon[reference:9]
-    IntroSoundId = "rbxassetid://12221967",[reference:10]
-    backgroundTransparency = 0,[reference:11]
-    SelectorUserImages = true,[reference:12]
-    Resizable = true,[reference:13]
-    WindowMinSize = Vector2.new(360, 300),[reference:14]
-    WindowMaxSize = Vector2.new(900, 620),[reference:15]
-    InterfaceKey = Enum.KeyCode.RightShift,[reference:16]
-    RainbowEnabled = true,[reference:17]
-    Hints = {"W424HUB - VoltilsUI Edition", "Join Discord for Support"},[reference:18]
-    KeySystem = false,[reference:19]
+    LogoIcon = "93061773121162",
+    -- IntroSoundId dihapus agar tidak error
+    backgroundTransparency = 0,
+    SelectorUserImages = true,
+    Resizable = true,
+    WindowMinSize = Vector2.new(360, 300),
+    WindowMaxSize = Vector2.new(900, 620),
+    InterfaceKey = Enum.KeyCode.RightShift,
+    RainbowEnabled = true,
+    Hints = {"W424HUB - VoltilsUI Edition", "Tekan RightShift untuk buka/tutup"},
+    KeySystem = false,
 })
 
 print("✅ Window created!")
@@ -30,7 +45,7 @@ print("✅ Window created!")
 -- =============================================
 -- [3] BUAT TAB
 -- =============================================
-local TabAim = UI:NewTab("Aim", "crosshair")  -- icon pakai nama Lucide[reference:20]
+local TabAim = UI:NewTab("Aim", "crosshair")
 local TabVisual = UI:NewTab("Visual", "eye")
 local TabPlayer = UI:NewTab("Player", "user")
 local TabArsenal = UI:NewTab("Arsenal", "sword")
@@ -38,7 +53,7 @@ local TabArsenal = UI:NewTab("Arsenal", "sword")
 print("✅ Tabs created")
 
 -- =============================================
--- [4] VARIABLES GLOBAL (sama seperti sebelumnya)
+-- [4] VARIABLES GLOBAL (sama)
 -- =============================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -103,16 +118,15 @@ local statsFrame = nil
 local statsText = nil
 
 -- =============================================
--- [5] TAB AIM - AIMBOT (pakai Split Sections biar rapi)[reference:21]
+-- [5] TAB AIM
 -- =============================================
 TabAim:EnableSplitSections({ Sides = 2 })
 
--- Sisi Kiri
 TabAim:NewSection("Aimbot Settings", "Left")
 
 TabAim:NewToggle("Enable Aimbot", false, function(v) aimbotEnabled = v end)
 
-TabAim:NewSelector("Aim Mode", "Camera", {"Camera", "Silent"}, function(v) aimMode = v end)[reference:22]
+TabAim:NewSelector("Aim Mode", "Camera", {"Camera", "Silent"}, function(v) aimMode = v end)
 
 TabAim:NewSelector("Trigger", "On Shoot", {"On Shoot", "Always"}, function(v) aimTrigger = v end)
 
@@ -129,10 +143,9 @@ TabAim:NewToggle("Visibility Check", true, function(v) useVisCheck = v end)
 
 TabAim:NewToggle("Prediction", false, function(v) usePrediction = v end)
 
--- Sisi Kanan
 TabAim:NewSection("Aimbot Values", "Right")
 
-TabAim:NewSlider("FOV Radius", "px", false, "/", {min = 30, max = 400, default = 100}, function(v) fovRadius = v end)[reference:23]
+TabAim:NewSlider("FOV Radius", "px", false, "/", {min = 30, max = 400, default = 100}, function(v) fovRadius = v end)
 
 TabAim:NewSlider("Max Distance", "stud", false, "/", {min = 50, max = 500, default = 300}, function(v) maxDistance = v end)
 
@@ -140,7 +153,7 @@ TabAim:NewSlider("Prediction Factor", "%", false, "/", {min = 0, max = 100, defa
 
 TabAim:NewSlider("Smoothness", "%", false, "/", {min = 1, max = 100, default = 100}, function(v) smoothness = v / 100 end)
 
--- FOV Circle (Drawing)
+-- FOV Circle
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Radius = fovRadius
@@ -153,11 +166,10 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 end)
 
--- Toggle Show FOV (pakai Label atau Button untuk kontrol)
 TabAim:NewToggle("Show FOV Circle", false, function(v) fovCircle.Visible = v end)
 
 -- =============================================
--- [6] TAB VISUAL - ESP
+-- [6] TAB VISUAL
 -- =============================================
 TabVisual:EnableSplitSections({ Sides = 2 })
 
@@ -170,7 +182,7 @@ end)
 
 TabVisual:NewToggle("ESP Team Check", true, function(v) espTeam = v end)
 
--- VoltilsUI tidak punya ColorPicker bawaan, pakai Selector atau biarkan user pilih dari preset
+-- Color picker menggunakan pilihan warna
 local colorOptions = {"Merah", "Hijau", "Biru", "Kuning", "Ungu", "Putih"}
 local colorMap = {
     Merah = Color3.fromRGB(255,0,0),
@@ -253,7 +265,6 @@ end)
 -- [7] TAB PLAYER
 -- =============================================
 TabPlayer:NewSection("Player Mods")
-
 TabPlayer:NewToggle("No Recoil", false, function(v) noRecoil = v end)
 TabPlayer:NewToggle("No Spread", false, function(v) noSpread = v end)
 TabPlayer:NewToggle("Anti Ragdoll", false, function(v) antiRagdoll = v end)
@@ -352,7 +363,7 @@ local function AddEveryItem()
     })
 end
 
-TabArsenal:NewButton("Unlock All Items", AddEveryItem)[reference:24]
+TabArsenal:NewButton("Unlock All Items", AddEveryItem)
 
 -- Fungsi helper skin changer
 local function ChangeSkin(skinType, skinName)
@@ -535,9 +546,273 @@ TabArsenal:NewButton("Reset Hitbox", function()
 end)
 
 -- =============================================
--- [10] FUNGSI AIMBOT & ESP (SAMA SEPERTI SEBELUMNYA)
+-- [10] FUNGSI AIMBOT & ESP
 -- =============================================
--- (Kode aimbot, ESP, no recoil, FPS updater tetap sama persis seperti sebelumnya)
--- ...
+local function isVisible(part)
+    if not useVisCheck or not part then return true end
+    local success, result = pcall(function()
+        local origin = camera.CFrame.Position
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = {LocalPlayer.Character}
+        params.IgnoreWater = true
+        local direction = (part.Position - origin)
+        return workspace:Raycast(origin, direction, params)
+    end)
+    if success and result then
+        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
+        if hitChar then
+            local player = Players:GetPlayerFromCharacter(hitChar)
+            return player ~= nil
+        end
+        return false
+    else
+        return true
+    end
+end
 
+local function getBestTarget()
+    local center = camera.ViewportSize / 2
+    local best, bestDist = nil, math.huge
+    local myChar = LocalPlayer.Character
+    if not myChar then return nil end
+    local myPos = myChar:FindFirstChild("HumanoidRootPart")
+    if not myPos then return nil end
+    myPos = myPos.Position
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local c = p.Character
+        if not c then continue end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
+
+        local part
+        if headshotOnly then
+            part = c:FindFirstChild("Head")
+        else
+            part = c:FindFirstChild(targetPart)
+        end
+        if not part then
+            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+        end
+        if not part then continue end
+
+        local targetPos = part.Position
+        if usePrediction then
+            local velocity = part.Velocity or Vector3.new(0,0,0)
+            targetPos = targetPos + (velocity * predFactor)
+        end
+        if headshotOnly then targetPos = targetPos + Vector3.new(0, 0.5, 0) end
+
+        local jarak = (targetPos - myPos).Magnitude
+        if jarak > maxDistance then continue end
+        if not isVisible(part) then continue end
+
+        local pos, on = camera:WorldToViewportPoint(targetPos)
+        if on then
+            local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+            if dist <= fovRadius and dist < bestDist then
+                bestDist = dist
+                best = { Part = part, Position = targetPos, Player = p }
+            end
+        end
+    end
+    return best
+end
+
+-- Camera Aimbot
+local frameSkip = 0
+RunService.RenderStepped:Connect(function()
+    frameSkip = frameSkip + 1
+    if frameSkip % 3 ~= 0 then return end
+
+    if not aimbotEnabled or aimMode ~= "Camera" then return end
+    local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
+    if not canAim then return end
+    local best = getBestTarget()
+    if best then
+        target = best
+        local targetPos = best.Position
+        local targetCF = CFrame.new(camera.CFrame.Position, targetPos)
+        camera.CFrame = smoothness >= 1 and targetCF or camera.CFrame:Lerp(targetCF, smoothness)
+    else target = nil end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isShooting = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isShooting = false
+    end
+end)
+
+-- Silent Aimbot
+pcall(function()
+    local gc = getgc()
+    for _, v in pairs(gc) do
+        if type(v) == "function" and islclosure(v) then
+            local constants = debug.getconstants(v)
+            local hasKeyword = false
+            for _, c in pairs(constants) do
+                if type(c) == "string" then
+                    local lower = c:lower()
+                    if lower:find("fire") or lower:find("shoot") or lower:find("ray") or lower:find("bullet") then
+                        hasKeyword = true
+                        break
+                    end
+                end
+            end
+            if hasKeyword then
+                local old
+                old = hookfunction(v, function(p1, p2)
+                    if aimbotEnabled and aimMode == "Silent" then
+                        local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
+                        if canAim then
+                            local best = getBestTarget()
+                            if best then
+                                local myChar = LocalPlayer.Character
+                                if myChar then
+                                    local startPart = myChar:FindFirstChild("Head") or myChar:FindFirstChild("HumanoidRootPart")
+                                    if startPart then
+                                        pcall(function()
+                                            if type(p1) == "userdata" and p1:IsA("Ray") then
+                                                local direction = (best.Position - startPart.Position)
+                                                p1 = Ray.new(startPart.Position, direction)
+                                            elseif type(p2) == "userdata" and p2:IsA("CFrame") then
+                                                local direction = (best.Position - startPart.Position)
+                                                p2 = CFrame.new(startPart.Position, startPart.Position + direction)
+                                            end
+                                        end)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    return old(p1, p2)
+                end)
+                break
+            end
+        end
+    end
+end)
+
+-- ESP Functions
+local function clearESP()
+    for _, h in pairs(highlightObjects) do pcall(function() h:Destroy() end) end
+    highlightObjects = {}
+end
+
+local function updateESP()
+    if not espEnabled then clearESP(); return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local char = p.Character
+        if not char then
+            if highlightObjects[p] then pcall(function() highlightObjects[p]:Destroy() end); highlightObjects[p] = nil end
+            continue
+        end
+        if espTeam and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then
+            if highlightObjects[p] then highlightObjects[p].Enabled = false end
+            continue
+        end
+        if not highlightObjects[p] then
+            local h = Instance.new("Highlight")
+            h.Parent = char
+            h.FillColor = espColor
+            h.OutlineColor = espColor
+            h.FillTransparency = espTransparency
+            h.OutlineTransparency = 0.5
+            h.Enabled = true
+            highlightObjects[p] = h
+        else
+            highlightObjects[p].Parent = char
+            highlightObjects[p].Enabled = true
+        end
+    end
+    for p, h in pairs(highlightObjects) do
+        if not p.Parent or not Players:FindFirstChild(p.Name) then
+            pcall(function() h:Destroy() end)
+            highlightObjects[p] = nil
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(updateESP)
+Players.PlayerRemoving:Connect(function(p) if highlightObjects[p] then pcall(function() highlightObjects[p]:Destroy() end); highlightObjects[p] = nil end end)
+task.spawn(function()
+    while true do
+        task.wait(2)
+        pcall(updateESP)
+    end
+end)
+
+-- =============================================
+-- [11] NO RECOIL / NO SPREAD / ANTI RAGDOLL
+-- =============================================
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    if antiRagdoll then
+        pcall(function()
+            if hum.PlatformStand or hum.Sit then
+                hum.PlatformStand = false
+                hum.Sit = false
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then hrp.Velocity = Vector3.new(0,0,0); hrp.RotVelocity = Vector3.new(0,0,0) end
+            end
+            if hum.SeatPart then hum.Sit = false end
+        end)
+    end
+
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        if noRecoil then
+            for _, prop in ipairs({"Recoil","recoil","Kickback","GunRecoil","Shake","CameraRecoil"}) do
+                pcall(function() if tool[prop] ~= nil and type(tool[prop]) == "number" then tool[prop] = 0 end end)
+            end
+        end
+        if noSpread then
+            for _, prop in ipairs({"Spread","spread","Accuracy","Inaccuracy","BulletSpread","Deviation"}) do
+                pcall(function() if tool[prop] ~= nil and type(tool[prop]) == "number" then tool[prop] = 0 end end)
+            end
+        end
+    end
+end)
+
+-- =============================================
+-- [12] FPS & PING UPDATER
+-- =============================================
+local fpsCounter = 0
+local fpsTime = 0
+
+RunService.RenderStepped:Connect(function(dt)
+    if statsOn and statsText then
+        fpsCounter = fpsCounter + 1
+        fpsTime = fpsTime + dt
+        if fpsTime >= 1 then
+            local ping = 0
+            pcall(function() ping = LocalPlayer:GetNetworkPing() * 1000 end)
+            statsText.Text = string.format("FPS: %d | Ping: %.0fms", fpsCounter, ping)
+            fpsCounter = 0
+            fpsTime = 0
+        end
+    end
+end)
+
+-- =============================================
+-- [13] SELESAI
+-- =============================================
 print("✅ W424HUB - VoltilsUI Edition loaded!")
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "W424HUB",
+    Text = "All features ready! Tekan RightShift untuk buka GUI.",
+    Duration = 3
+})
