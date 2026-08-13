@@ -1,4 +1,4 @@
--- ========== W424HUB v4.3 – FIXED (No Actors) ==========
+-- ========== W424HUB v4.3 – FIXED (All AddParagraph complete) ==========
 print("=== LOADING W424HUB v4.3 ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
@@ -21,7 +21,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local Window = Kairo:CreateWindow({
     Title = "W424HUB",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 520),
+    Size = UDim2.fromOffset(500, 450),
     Center = true,
     Draggable = true,
     Resize = false,
@@ -32,12 +32,12 @@ local Window = Kairo:CreateWindow({
 })
 if not Window then return end
 
-Window:Notify({Title="W424HUB v4.3", Description="Fixed! No Actors needed.", Color=Color3.fromRGB(0,200,50), Delay=3})
+Window:Notify({Title="W424HUB v4.3", Description="Fixed! All paragraphs complete.", Color=Color3.fromRGB(0,200,50), Delay=3})
 
 -- ============================================
 -- TAB MAIN – Player & Arsenal Mods
 -- ============================================
-local TabMain = Window:CreateTab("Main", "rbxassetid://16932740082")
+local TabMain = Window:CreateTab("Main")
 Window:AddParagraph(TabMain, "Player Mods", "Character & weapon tweaks")
 
 local noRecoil = false
@@ -155,8 +155,7 @@ end)
 -- ============================================
 -- TAB COMBAT – Aimbot, Silent Aim, Triggerbot
 -- ============================================
-local TabCombat = Window:CreateTab("Combat", "rbxassetid://16932740082")
-
+local TabCombat = Window:CreateTab("Combat")
 Window:AddParagraph(TabCombat, "Aimbot", "Camera aimbot (visible)")
 
 -- Variabel Camera Aimbot
@@ -375,7 +374,7 @@ local function getBestTarget()
 end
 
 -- ===== UI COMBAT =====
-Window:AddParagraph(TabCombat, "Aim Mode")
+Window:AddParagraph(TabCombat, "Aim Mode", "Pilih metode aim")
 Window:AddDropdown(TabCombat, "Aim Mode", "Camera (visible) or Silent (invisible)", {"Camera","Silent"}, false, "Camera", function(v)
     aimMode = v
     if v == "Silent" then
@@ -634,10 +633,10 @@ end)
 -- ============================================
 -- TAB VISUAL – ESP, Line, Reduce Map, FPS/Ping
 -- ============================================
-local TabVisual = Window:CreateTab("Visual", "rbxassetid://16932740082")
+local TabVisual = Window:CreateTab("Visual")
+Window:AddParagraph(TabVisual, "ESP Chams", "Highlight enemies with color")
 
 -- ESP
-Window:AddParagraph(TabVisual, "ESP Chams")
 local espEnabled = false
 local espColor = Color3.fromRGB(255, 0, 0)
 local espTeam = true
@@ -987,8 +986,7 @@ end)
 -- ============================================
 -- TAB CONFIG
 -- ============================================
-local TabConfig = Window:CreateTab("Config", "rbxassetid://16932740082")
-
+local TabConfig = Window:CreateTab("Config")
 Window:AddParagraph(TabConfig, "Configuration", "Save & Load settings")
 Window:AddButton(TabConfig, "Save Config", "Simpan setting ke file", function()
     Window:Save()
@@ -1066,4 +1064,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ W424HUB v4.3 loaded – Fixed! No Actors, no SurfaceGui errors!")
+print("✅ W424HUB v4.3 loaded – ALL FIXED!")
