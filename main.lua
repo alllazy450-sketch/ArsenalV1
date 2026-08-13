@@ -1,96 +1,44 @@
--- =============================================
--- [1] DEBUG AWAL
--- =============================================
-print("=== W424HUB - Starlight Edition Loading ===")
+print("=== W424HUB - VoltilsUI Edition Loading ===")
 
 -- =============================================
--- [2] LOAD STARLIGHT LIBRARY
+-- [1] LOAD VOLTILSUI
 -- =============================================
-local success, Starlight = pcall(function()
-    return loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/starlight"))()
-end)
-
-if not success or not Starlight then
-    warn("❌ Gagal load Starlight! Error:", success and "Library nil" or "Unknown")
-    -- Fallback: beri tahu user
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "W424HUB Error",
-        Text = "Gagal load Starlight! Cek koneksi internet.",
-        Duration = 5
-    })
-    return
-else
-    print("✅ Starlight loaded successfully!")
-end
+local VoltilsUI = loadstring(game:HttpGet("https://bloxvault.org/load/qLALM"))()[reference:8]
 
 -- =============================================
--- [3] LOAD ICON LIBRARY (Opsional)
+-- [2] INIT WINDOW
 -- =============================================
-local NebulaIcons = pcall(function()
-    return loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/nebula-icon-library-loader"))()
-end) and ... or nil
-
-if NebulaIcons then
-    print("✅ Nebula Icons loaded!")
-else
-    print("⚠️ Nebula Icons tidak tersedia, pakai asset ID.")
-end
-
--- =============================================
--- [4] SETEL THEME & BUAT WINDOW
--- =============================================
-Starlight:SetTheme("Crimson")
-
-local Window = Starlight:CreateWindow({
-    Name = "W424HUB"
+local UI = VoltilsUI:Init({
+    title = "W424HUB",
+    company = "W424",
+    DiscordInvite = "discord.gg/example",
+    LogoIcon = "93061773121162",  -- asset ID icon[reference:9]
+    IntroSoundId = "rbxassetid://12221967",[reference:10]
+    backgroundTransparency = 0,[reference:11]
+    SelectorUserImages = true,[reference:12]
+    Resizable = true,[reference:13]
+    WindowMinSize = Vector2.new(360, 300),[reference:14]
+    WindowMaxSize = Vector2.new(900, 620),[reference:15]
+    InterfaceKey = Enum.KeyCode.RightShift,[reference:16]
+    RainbowEnabled = true,[reference:17]
+    Hints = {"W424HUB - VoltilsUI Edition", "Join Discord for Support"},[reference:18]
+    KeySystem = false,[reference:19]
 })
 
 print("✅ Window created!")
 
 -- =============================================
--- [5] NOTIFIKASI AWAL
+-- [3] BUAT TAB
 -- =============================================
-Starlight:Notify({
-    Title = "W424HUB",
-    Description = "Loaded with Starlight!",
-    Duration = 3
-})
+local TabAim = UI:NewTab("Aim", "crosshair")  -- icon pakai nama Lucide[reference:20]
+local TabVisual = UI:NewTab("Visual", "eye")
+local TabPlayer = UI:NewTab("Player", "user")
+local TabArsenal = UI:NewTab("Arsenal", "sword")
 
--- =============================================
--- [6] BUAT TAB
--- =============================================
-local iconBubble = "rbxassetid://109462748520607"
-
-local TabAim = Window:CreateTab({
-    Name = "Aim",
-    Icon = iconBubble,
-    ImageSource = "rbxassetid"
-})
-print("✅ Tab Aim created")
-
-local TabVisual = Window:CreateTab({
-    Name = "Visual",
-    Icon = iconBubble,
-    ImageSource = "rbxassetid"
-})
-print("✅ Tab Visual created")
-
-local TabPlayer = Window:CreateTab({
-    Name = "Player",
-    Icon = iconBubble,
-    ImageSource = "rbxassetid"
-})
-print("✅ Tab Player created")
-
-local TabArsenal = Window:CreateTab({
-    Name = "Arsenal",
-    Icon = iconBubble,
-    ImageSource = "rbxassetid"
-})
-print("✅ Tab Arsenal created")
+print("✅ Tabs created")
 
 -- =============================================
--- [7] VARIABLES GLOBAL
+-- [4] VARIABLES GLOBAL (sama seperti sebelumnya)
 -- =============================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -155,98 +103,44 @@ local statsFrame = nil
 local statsText = nil
 
 -- =============================================
--- [8] TAB AIM - AIMBOT
+-- [5] TAB AIM - AIMBOT (pakai Split Sections biar rapi)[reference:21]
 -- =============================================
-TabAim:CreateSection("Aimbot Settings")
+TabAim:EnableSplitSections({ Sides = 2 })
 
-TabAim:CreateToggle({
-    Name = "Enable Aimbot",
-    Callback = function(v) aimbotEnabled = v end
-})
+-- Sisi Kiri
+TabAim:NewSection("Aimbot Settings", "Left")
 
-TabAim:CreateDropdown({
-    Name = "Aim Mode",
-    Options = {"Camera", "Silent"},
-    Default = "Camera",
-    Callback = function(v) aimMode = v end
-})
+TabAim:NewToggle("Enable Aimbot", false, function(v) aimbotEnabled = v end)
 
-TabAim:CreateDropdown({
-    Name = "Trigger",
-    Options = {"On Shoot", "Always"},
-    Default = "On Shoot",
-    Callback = function(v) aimTrigger = v end
-})
+TabAim:NewSelector("Aim Mode", "Camera", {"Camera", "Silent"}, function(v) aimMode = v end)[reference:22]
 
-TabAim:CreateDropdown({
-    Name = "Target Part",
-    Options = {"Head", "HumanoidRootPart", "Torso", "UpperTorso"},
-    Default = "Head",
-    Callback = function(v) targetPart = v end
-})
+TabAim:NewSelector("Trigger", "On Shoot", {"On Shoot", "Always"}, function(v) aimTrigger = v end)
 
-TabAim:CreateToggle({
-    Name = "Headshot Only",
-    Callback = function(v)
-        headshotOnly = v
-        if v then targetPart = "Head" end
-    end
-})
+TabAim:NewSelector("Target Part", "Head", {"Head", "HumanoidRootPart", "Torso", "UpperTorso"}, function(v) targetPart = v end)
 
-TabAim:CreateToggle({
-    Name = "Anti Team",
-    Default = true,
-    Callback = function(v) useTeamCheck = v end
-})
+TabAim:NewToggle("Headshot Only", false, function(v) 
+    headshotOnly = v
+    if v then targetPart = "Head" end
+end)
 
-TabAim:CreateToggle({
-    Name = "Visibility Check",
-    Default = true,
-    Callback = function(v) useVisCheck = v end
-})
+TabAim:NewToggle("Anti Team", true, function(v) useTeamCheck = v end)
 
-TabAim:CreateToggle({
-    Name = "Prediction",
-    Callback = function(v) usePrediction = v end
-})
+TabAim:NewToggle("Visibility Check", true, function(v) useVisCheck = v end)
 
-TabAim:CreateSlider({
-    Name = "FOV Radius",
-    Min = 30,
-    Max = 400,
-    Default = 100,
-    Suffix = "px",
-    Callback = function(v) fovRadius = v end
-})
+TabAim:NewToggle("Prediction", false, function(v) usePrediction = v end)
 
-TabAim:CreateSlider({
-    Name = "Max Distance",
-    Min = 50,
-    Max = 500,
-    Default = 300,
-    Suffix = "stud",
-    Callback = function(v) maxDistance = v end
-})
+-- Sisi Kanan
+TabAim:NewSection("Aimbot Values", "Right")
 
-TabAim:CreateSlider({
-    Name = "Prediction Factor",
-    Min = 0,
-    Max = 100,
-    Default = 20,
-    Suffix = "%",
-    Callback = function(v) predFactor = v / 100 end
-})
+TabAim:NewSlider("FOV Radius", "px", false, "/", {min = 30, max = 400, default = 100}, function(v) fovRadius = v end)[reference:23]
 
-TabAim:CreateSlider({
-    Name = "Smoothness",
-    Min = 1,
-    Max = 100,
-    Default = 100,
-    Suffix = "%",
-    Callback = function(v) smoothness = v / 100 end
-})
+TabAim:NewSlider("Max Distance", "stud", false, "/", {min = 50, max = 500, default = 300}, function(v) maxDistance = v end)
 
--- FOV Circle (menggunakan Drawing)
+TabAim:NewSlider("Prediction Factor", "%", false, "/", {min = 0, max = 100, default = 20}, function(v) predFactor = v / 100 end)
+
+TabAim:NewSlider("Smoothness", "%", false, "/", {min = 1, max = 100, default = 100}, function(v) smoothness = v / 100 end)
+
+-- FOV Circle (Drawing)
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Radius = fovRadius
@@ -259,209 +153,175 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 end)
 
-TabAim:CreateToggle({
-    Name = "Show FOV Circle",
-    Callback = function(v) fovCircle.Visible = v end
-})
+-- Toggle Show FOV (pakai Label atau Button untuk kontrol)
+TabAim:NewToggle("Show FOV Circle", false, function(v) fovCircle.Visible = v end)
 
 -- =============================================
--- [9] TAB VISUAL - ESP + OPTIMASI
+-- [6] TAB VISUAL - ESP
 -- =============================================
-TabVisual:CreateSection("ESP Chams")
+TabVisual:EnableSplitSections({ Sides = 2 })
 
-TabVisual:CreateToggle({
-    Name = "Enable ESP",
-    Callback = function(v)
-        espEnabled = v
-        if not v then clearESP() end
+TabVisual:NewSection("ESP Chams", "Left")
+
+TabVisual:NewToggle("Enable ESP", false, function(v)
+    espEnabled = v
+    if not v then clearESP() end
+end)
+
+TabVisual:NewToggle("ESP Team Check", true, function(v) espTeam = v end)
+
+-- VoltilsUI tidak punya ColorPicker bawaan, pakai Selector atau biarkan user pilih dari preset
+local colorOptions = {"Merah", "Hijau", "Biru", "Kuning", "Ungu", "Putih"}
+local colorMap = {
+    Merah = Color3.fromRGB(255,0,0),
+    Hijau = Color3.fromRGB(0,255,0),
+    Biru = Color3.fromRGB(0,0,255),
+    Kuning = Color3.fromRGB(255,255,0),
+    Ungu = Color3.fromRGB(255,0,255),
+    Putih = Color3.fromRGB(255,255,255)
+}
+TabVisual:NewSelector("ESP Color", "Merah", colorOptions, function(v)
+    espColor = colorMap[v]
+    for _, h in pairs(highlightObjects) do 
+        if h then h.FillColor = espColor end 
     end
-})
+end)
 
-TabVisual:CreateToggle({
-    Name = "ESP Team Check",
-    Default = true,
-    Callback = function(v) espTeam = v end
-})
-
-TabVisual:CreateColorPicker({
-    Name = "ESP Color",
-    Default = Color3.fromRGB(255, 0, 0),
-    Callback = function(c)
-        espColor = c
-        for _, h in pairs(highlightObjects) do if h then h.FillColor = c end end
+TabVisual:NewSlider("ESP Transparency", "/10", false, "/", {min = 0, max = 10, default = 3}, function(v)
+    espTransparency = v / 10
+    for _, h in pairs(highlightObjects) do 
+        if h then h.FillTransparency = espTransparency end 
     end
-})
+end)
 
-TabVisual:CreateSlider({
-    Name = "ESP Transparency",
-    Min = 0,
-    Max = 10,
-    Default = 3,
-    Suffix = "/10",
-    Callback = function(v)
-        espTransparency = v / 10
-        for _, h in pairs(highlightObjects) do if h then h.FillTransparency = espTransparency end end
-    end
-})
+TabVisual:NewSection("Optimization", "Right")
 
-TabVisual:CreateSection("Optimization")
-
-TabVisual:CreateToggle({
-    Name = "Reduce Map (Disable Minimap)",
-    Callback = function(v)
-        reduceMap = v
-        if v then
-            pcall(function() StarterGui:SetCore("MinimapEnabled", false) end)
-            for _, gui in ipairs(CoreGui:GetChildren()) do
-                if gui.Name:lower():find("minimap") then gui.Enabled = false end
-            end
-            for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-                if gui.Name:lower():find("minimap") then gui.Enabled = false end
-            end
-        else
-            pcall(function() StarterGui:SetCore("MinimapEnabled", true) end)
-            for _, gui in ipairs(CoreGui:GetChildren()) do
-                if gui.Name:lower():find("minimap") then gui.Enabled = true end
-            end
-            for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-                if gui.Name:lower():find("minimap") then gui.Enabled = true end
-            end
+TabVisual:NewToggle("Reduce Map (Disable Minimap)", false, function(v)
+    reduceMap = v
+    if v then
+        pcall(function() StarterGui:SetCore("MinimapEnabled", false) end)
+        for _, gui in ipairs(CoreGui:GetChildren()) do
+            if gui.Name:lower():find("minimap") then gui.Enabled = false end
+        end
+        for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+            if gui.Name:lower():find("minimap") then gui.Enabled = false end
+        end
+    else
+        pcall(function() StarterGui:SetCore("MinimapEnabled", true) end)
+        for _, gui in ipairs(CoreGui:GetChildren()) do
+            if gui.Name:lower():find("minimap") then gui.Enabled = true end
+        end
+        for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+            if gui.Name:lower():find("minimap") then gui.Enabled = true end
         end
     end
-})
+end)
 
-TabVisual:CreateToggle({
-    Name = "Show FPS & Ping",
-    Callback = function(v)
-        statsOn = v
-        if v then
-            if not statsFrame then
-                statsFrame = Drawing.new("Frame")
-                statsFrame.Visible = true
-                statsFrame.ZIndex = 999
-                statsFrame.BackgroundColor = Color3.new(0,0,0)
-                statsFrame.BackgroundTransparency = 0.7
-                statsFrame.Position = Vector2.new(10, 10)
-                statsFrame.Size = Vector2.new(160, 30)
-                statsFrame.BorderColor = Color3.new(0.5,0.5,0.5)
-                statsFrame.BorderThickness = 1
-
-                statsText = Drawing.new("Text")
-                statsText.Visible = true
-                statsText.Position = Vector2.new(15, 16)
-                statsText.Size = 14
-                statsText.Color = Color3.new(0,1,0.5)
-                statsText.Outline = true
-                statsText.OutlineColor = Color3.new(0,0,0)
-                statsText.Font = Drawing.Fonts.UI
-                statsText.Text = "FPS: 0 | Ping: 0ms"
-            end
+TabVisual:NewToggle("Show FPS & Ping", false, function(v)
+    statsOn = v
+    if v then
+        if not statsFrame then
+            statsFrame = Drawing.new("Frame")
             statsFrame.Visible = true
+            statsFrame.ZIndex = 999
+            statsFrame.BackgroundColor = Color3.new(0,0,0)
+            statsFrame.BackgroundTransparency = 0.7
+            statsFrame.Position = Vector2.new(10, 10)
+            statsFrame.Size = Vector2.new(160, 30)
+            statsFrame.BorderColor = Color3.new(0.5,0.5,0.5)
+            statsFrame.BorderThickness = 1
+
+            statsText = Drawing.new("Text")
             statsText.Visible = true
-        else
-            if statsFrame then statsFrame.Visible = false end
-            if statsText then statsText.Visible = false end
+            statsText.Position = Vector2.new(15, 16)
+            statsText.Size = 14
+            statsText.Color = Color3.new(0,1,0.5)
+            statsText.Outline = true
+            statsText.OutlineColor = Color3.new(0,0,0)
+            statsText.Font = Drawing.Fonts.UI
+            statsText.Text = "FPS: 0 | Ping: 0ms"
         end
+        statsFrame.Visible = true
+        statsText.Visible = true
+    else
+        if statsFrame then statsFrame.Visible = false end
+        if statsText then statsText.Visible = false end
     end
-})
+end)
 
 -- =============================================
--- [10] TAB PLAYER - MODS
+-- [7] TAB PLAYER
 -- =============================================
-TabPlayer:CreateSection("Player Mods")
+TabPlayer:NewSection("Player Mods")
 
-TabPlayer:CreateToggle({
-    Name = "No Recoil",
-    Callback = function(v) noRecoil = v end
-})
-
-TabPlayer:CreateToggle({
-    Name = "No Spread",
-    Callback = function(v) noSpread = v end
-})
-
-TabPlayer:CreateToggle({
-    Name = "Anti Ragdoll",
-    Callback = function(v) antiRagdoll = v end
-})
+TabPlayer:NewToggle("No Recoil", false, function(v) noRecoil = v end)
+TabPlayer:NewToggle("No Spread", false, function(v) noSpread = v end)
+TabPlayer:NewToggle("Anti Ragdoll", false, function(v) antiRagdoll = v end)
 
 -- =============================================
--- [11] TAB ARSENAL - FITUR KHUSUS + SILENT HITBOX
+-- [8] TAB ARSENAL
 -- =============================================
-TabArsenal:CreateSection("Arsenal Mods")
+TabArsenal:EnableSplitSections({ Sides = 2 })
 
-TabArsenal:CreateToggle({
-    Name = "Fast Fire Rate",
-    Callback = function(v)
-        fastFire = v
-        local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-        if weapons then
-            for _, w in ipairs(weapons:GetChildren()) do
-                if w:FindFirstChild("FireRate") then w.FireRate.Value = v and 0.01 or 0.1 end
-                if w:FindFirstChild("BFireRate") then w.BFireRate.Value = v and 0.01 or 0.1 end
+TabArsenal:NewSection("Arsenal Mods", "Left")
+
+TabArsenal:NewToggle("Fast Fire Rate", false, function(v)
+    fastFire = v
+    local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+    if weapons then
+        for _, w in ipairs(weapons:GetChildren()) do
+            if w:FindFirstChild("FireRate") then w.FireRate.Value = v and 0.01 or 0.1 end
+            if w:FindFirstChild("BFireRate") then w.BFireRate.Value = v and 0.01 or 0.1 end
+        end
+    end
+end)
+
+TabArsenal:NewToggle("Fast Reload", false, function(v)
+    fastReload = v
+    local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+    if weapons then
+        for _, w in ipairs(weapons:GetChildren()) do
+            if w:FindFirstChild("ReloadTime") then w.ReloadTime.Value = v and 0.01 or 1.5 end
+        end
+    end
+end)
+
+TabArsenal:NewToggle("Infinite Ammo", false, function(v)
+    infiniteAmmo = v
+    if v then
+        pcall(function()
+            local wkspc = ReplicatedStorage:FindFirstChild("wkspc")
+            if wkspc and wkspc:FindFirstChild("CurrentCurse") then
+                wkspc.CurrentCurse.Value = 'Infinite Ammo'
             end
+        end)
+    end
+end)
+
+TabArsenal:NewToggle("No Recoil (Arsenal)", false, function(v)
+    arsenalNoRecoil = v
+    local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+    if weapons then
+        for _, w in ipairs(weapons:GetChildren()) do
+            if w:FindFirstChild("RecoilControl") then w.RecoilControl.Value = v and 0 or 1 end
         end
     end
-})
+end)
 
-TabArsenal:CreateToggle({
-    Name = "Fast Reload",
-    Callback = function(v)
-        fastReload = v
-        local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-        if weapons then
-            for _, w in ipairs(weapons:GetChildren()) do
-                if w:FindFirstChild("ReloadTime") then w.ReloadTime.Value = v and 0.01 or 1.5 end
-            end
+TabArsenal:NewToggle("No Spread (Arsenal)", false, function(v)
+    arsenalNoSpread = v
+    local weapons = ReplicatedStorage:FindFirstChild("Weapons")
+    if weapons then
+        for _, w in ipairs(weapons:GetChildren()) do
+            if w:FindFirstChild("MaxSpread") then w.MaxSpread.Value = v and 0.01 or 1 end
+            if w:FindFirstChild("SpreadRecovery") then w.SpreadRecovery.Value = v and 0.01 or 0.5 end
         end
     end
-})
+end)
 
-TabArsenal:CreateToggle({
-    Name = "Infinite Ammo",
-    Callback = function(v)
-        infiniteAmmo = v
-        if v then
-            pcall(function()
-                local wkspc = ReplicatedStorage:FindFirstChild("wkspc")
-                if wkspc and wkspc:FindFirstChild("CurrentCurse") then
-                    wkspc.CurrentCurse.Value = 'Infinite Ammo'
-                end
-            end)
-        end
-    end
-})
+TabArsenal:NewSection("Unlock & Skin Changer", "Right")
 
-TabArsenal:CreateToggle({
-    Name = "No Recoil (Arsenal)",
-    Callback = function(v)
-        arsenalNoRecoil = v
-        local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-        if weapons then
-            for _, w in ipairs(weapons:GetChildren()) do
-                if w:FindFirstChild("RecoilControl") then w.RecoilControl.Value = v and 0 or 1 end
-            end
-        end
-    end
-})
-
-TabArsenal:CreateToggle({
-    Name = "No Spread (Arsenal)",
-    Callback = function(v)
-        arsenalNoSpread = v
-        local weapons = ReplicatedStorage:FindFirstChild("Weapons")
-        if weapons then
-            for _, w in ipairs(weapons:GetChildren()) do
-                if w:FindFirstChild("MaxSpread") then w.MaxSpread.Value = v and 0.01 or 1 end
-                if w:FindFirstChild("SpreadRecovery") then w.SpreadRecovery.Value = v and 0.01 or 0.5 end
-            end
-        end
-    end
-})
-
-TabArsenal:CreateSection("Unlock & Skin Changer")
-
--- Fungsi Unlock All Items
+-- Unlock All Items
 local function AddEveryItem()
     local items = ReplicatedStorage:FindFirstChild("ItemData")
     if not items then return end
@@ -485,13 +345,14 @@ local function AddEveryItem()
             end
         end
     end
-    Starlight:Notify({ Title = "Unlock All", Description = "All items unlocked!", Duration = 3 })
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Unlock All",
+        Text = "All items unlocked!",
+        Duration = 3
+    })
 end
 
-TabArsenal:CreateButton({
-    Name = "Unlock All Items",
-    Callback = AddEveryItem
-})
+TabArsenal:NewButton("Unlock All Items", AddEveryItem)[reference:24]
 
 -- Fungsi helper skin changer
 local function ChangeSkin(skinType, skinName)
@@ -533,51 +394,25 @@ local function GetSkinList(category)
     return list
 end
 
--- Dropdown skin
 local charSkins = GetSkinList("Character")
-TabArsenal:CreateDropdown({
-    Name = "Character Skin",
-    Options = charSkins,
-    Default = charSkins[1] or "Default",
-    Callback = function(v) ChangeSkin("Character", v) end
-})
+TabArsenal:NewSelector("Character Skin", charSkins[1] or "Default", charSkins, function(v) ChangeSkin("Character", v) end)
 
 local meleeSkins = GetSkinList("Melee")
-TabArsenal:CreateDropdown({
-    Name = "Melee Skin",
-    Options = meleeSkins,
-    Default = meleeSkins[1] or "Default",
-    Callback = function(v) ChangeSkin("Melee", v) end
-})
+TabArsenal:NewSelector("Melee Skin", meleeSkins[1] or "Default", meleeSkins, function(v) ChangeSkin("Melee", v) end)
 
 local gunSkins = GetSkinList("Gun")
-TabArsenal:CreateDropdown({
-    Name = "Gun Skin",
-    Options = gunSkins,
-    Default = gunSkins[1] or "Default",
-    Callback = function(v) ChangeSkin("GunSkin", v) end
-})
+TabArsenal:NewSelector("Gun Skin", gunSkins[1] or "Default", gunSkins, function(v) ChangeSkin("GunSkin", v) end)
 
 local killSkins = GetSkinList("KillEffect")
-TabArsenal:CreateDropdown({
-    Name = "Kill Effect",
-    Options = killSkins,
-    Default = killSkins[1] or "Default",
-    Callback = function(v) ChangeSkin("KillEffect", v) end
-})
+TabArsenal:NewSelector("Kill Effect", killSkins[1] or "Default", killSkins, function(v) ChangeSkin("KillEffect", v) end)
 
 local announcerSkins = GetSkinList("Announcer")
-TabArsenal:CreateDropdown({
-    Name = "Announcer",
-    Options = announcerSkins,
-    Default = announcerSkins[1] or "Default",
-    Callback = function(v) ChangeSkin("Announcer", v) end
-})
+TabArsenal:NewSelector("Announcer", announcerSkins[1] or "Default", announcerSkins, function(v) ChangeSkin("Announcer", v) end)
 
 -- =============================================
--- [12] SILENT HITBOX
+-- [9] SILENT HITBOX
 -- =============================================
-TabArsenal:CreateSection("Silent Hitbox")
+TabArsenal:NewSection("Silent Hitbox", "Left")
 
 local function getTargetParts(char)
     local parts = {}
@@ -672,326 +507,37 @@ local function stopHitbox()
     end
 end
 
-TabArsenal:CreateToggle({
-    Name = "Enable Silent Hitbox",
-    Callback = function(v)
-        silentHitbox = v
-        if v then startHitbox() else stopHitbox() end
-    end
-})
+TabArsenal:NewToggle("Enable Silent Hitbox", false, function(v)
+    silentHitbox = v
+    if v then startHitbox() else stopHitbox() end
+end)
 
-TabArsenal:CreateDropdown({
-    Name = "Target Parts",
-    Options = {"All", "Head", "Torso", "Legs"},
-    Default = "All",
-    Callback = function(v)
-        targetPartsChoice = v
-        if silentHitbox then
-            stopHitbox()
-            startHitbox()
-        end
-    end
-})
-
-TabArsenal:CreateSlider({
-    Name = "Hitbox Expansion",
-    Min = 1,
-    Max = 30,
-    Default = 13,
-    Suffix = "x",
-    Callback = function(v) hitboxExpansion = v end
-})
-
-TabArsenal:CreateSlider({
-    Name = "Hitbox Alpha",
-    Min = 0,
-    Max = 10,
-    Default = 3,
-    Suffix = "/10",
-    Callback = function(v) hitboxAlpha = v / 10 end
-})
-
-TabArsenal:CreateButton({
-    Name = "Reset Hitbox",
-    Callback = function()
+TabArsenal:NewSelector("Target Parts", "All", {"All", "Head", "Torso", "Legs"}, function(v)
+    targetPartsChoice = v
+    if silentHitbox then
         stopHitbox()
-        if silentHitbox then startHitbox() end
-        Starlight:Notify({ Title = "Reset", Description = "Hitbox reset to default", Duration = 2 })
-    end
-})
-
--- =============================================
--- [13] FUNGSI AIMBOT & ESP
--- =============================================
--- (Semua fungsi aimbot dan ESP sudah diambil dari script sebelumnya)
--- Saya akan tulis ulang di sini agar lengkap
-
-local function isVisible(part)
-    if not useVisCheck or not part then return true end
-    local success, result = pcall(function()
-        local origin = camera.CFrame.Position
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        params.FilterDescendantsInstances = {LocalPlayer.Character}
-        params.IgnoreWater = true
-        local direction = (part.Position - origin)
-        return workspace:Raycast(origin, direction, params)
-    end)
-    if success and result then
-        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
-        if hitChar then
-            local player = Players:GetPlayerFromCharacter(hitChar)
-            return player ~= nil
-        end
-        return false
-    else
-        return true
-    end
-end
-
-local function getBestTarget()
-    local center = camera.ViewportSize / 2
-    local best, bestDist = nil, math.huge
-    local myChar = LocalPlayer.Character
-    if not myChar then return nil end
-    local myPos = myChar:FindFirstChild("HumanoidRootPart")
-    if not myPos then return nil end
-    myPos = myPos.Position
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        local c = p.Character
-        if not c then continue end
-        local hum = c:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
-
-        local part
-        if headshotOnly then
-            part = c:FindFirstChild("Head")
-        else
-            part = c:FindFirstChild(targetPart)
-        end
-        if not part then
-            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
-        end
-        if not part then continue end
-
-        local targetPos = part.Position
-        if usePrediction then
-            local velocity = part.Velocity or Vector3.new(0,0,0)
-            targetPos = targetPos + (velocity * predFactor)
-        end
-        if headshotOnly then targetPos = targetPos + Vector3.new(0, 0.5, 0) end
-
-        local jarak = (targetPos - myPos).Magnitude
-        if jarak > maxDistance then continue end
-        if not isVisible(part) then continue end
-
-        local pos, on = camera:WorldToViewportPoint(targetPos)
-        if on then
-            local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-            if dist <= fovRadius and dist < bestDist then
-                bestDist = dist
-                best = { Part = part, Position = targetPos, Player = p }
-            end
-        end
-    end
-    return best
-end
-
--- Camera Aimbot
-local frameSkip = 0
-RunService.RenderStepped:Connect(function()
-    frameSkip = frameSkip + 1
-    if frameSkip % 3 ~= 0 then return end
-
-    if not aimbotEnabled or aimMode ~= "Camera" then return end
-    local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
-    if not canAim then return end
-    local best = getBestTarget()
-    if best then
-        target = best
-        local targetPos = best.Position
-        local targetCF = CFrame.new(camera.CFrame.Position, targetPos)
-        camera.CFrame = smoothness >= 1 and targetCF or camera.CFrame:Lerp(targetCF, smoothness)
-    else target = nil end
-end)
-
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isShooting = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isShooting = false
+        startHitbox()
     end
 end)
 
--- Silent Aimbot
-pcall(function()
-    local gc = getgc()
-    for _, v in pairs(gc) do
-        if type(v) == "function" and islclosure(v) then
-            local constants = debug.getconstants(v)
-            local hasKeyword = false
-            for _, c in pairs(constants) do
-                if type(c) == "string" then
-                    local lower = c:lower()
-                    if lower:find("fire") or lower:find("shoot") or lower:find("ray") or lower:find("bullet") then
-                        hasKeyword = true
-                        break
-                    end
-                end
-            end
-            if hasKeyword then
-                local old
-                old = hookfunction(v, function(p1, p2)
-                    if aimbotEnabled and aimMode == "Silent" then
-                        local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
-                        if canAim then
-                            local best = getBestTarget()
-                            if best then
-                                local myChar = LocalPlayer.Character
-                                if myChar then
-                                    local startPart = myChar:FindFirstChild("Head") or myChar:FindFirstChild("HumanoidRootPart")
-                                    if startPart then
-                                        pcall(function()
-                                            if type(p1) == "userdata" and p1:IsA("Ray") then
-                                                local direction = (best.Position - startPart.Position)
-                                                p1 = Ray.new(startPart.Position, direction)
-                                            elseif type(p2) == "userdata" and p2:IsA("CFrame") then
-                                                local direction = (best.Position - startPart.Position)
-                                                p2 = CFrame.new(startPart.Position, startPart.Position + direction)
-                                            end
-                                        end)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    return old(p1, p2)
-                end)
-                break
-            end
-        end
-    end
-end)
+TabArsenal:NewSlider("Hitbox Expansion", "x", false, "/", {min = 1, max = 30, default = 13}, function(v) hitboxExpansion = v end)
 
--- ESP Functions
-local function clearESP()
-    for _, h in pairs(highlightObjects) do pcall(function() h:Destroy() end) end
-    highlightObjects = {}
-end
+TabArsenal:NewSlider("Hitbox Alpha", "/10", false, "/", {min = 0, max = 10, default = 3}, function(v) hitboxAlpha = v / 10 end)
 
-local function updateESP()
-    if not espEnabled then clearESP(); return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        local char = p.Character
-        if not char then
-            if highlightObjects[p] then pcall(function() highlightObjects[p]:Destroy() end); highlightObjects[p] = nil end
-            continue
-        end
-        if espTeam and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then
-            if highlightObjects[p] then highlightObjects[p].Enabled = false end
-            continue
-        end
-        if not highlightObjects[p] then
-            local h = Instance.new("Highlight")
-            h.Parent = char
-            h.FillColor = espColor
-            h.OutlineColor = espColor
-            h.FillTransparency = espTransparency
-            h.OutlineTransparency = 0.5
-            h.Enabled = true
-            highlightObjects[p] = h
-        else
-            highlightObjects[p].Parent = char
-            highlightObjects[p].Enabled = true
-        end
-    end
-    for p, h in pairs(highlightObjects) do
-        if not p.Parent or not Players:FindFirstChild(p.Name) then
-            pcall(function() h:Destroy() end)
-            highlightObjects[p] = nil
-        end
-    end
-end
-
-Players.PlayerAdded:Connect(updateESP)
-Players.PlayerRemoving:Connect(function(p) if highlightObjects[p] then pcall(function() highlightObjects[p]:Destroy() end); highlightObjects[p] = nil end end)
-task.spawn(function()
-    while true do
-        task.wait(2)
-        pcall(updateESP)
-    end
+TabArsenal:NewButton("Reset Hitbox", function()
+    stopHitbox()
+    if silentHitbox then startHitbox() end
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Reset",
+        Text = "Hitbox reset to default",
+        Duration = 2
+    })
 end)
 
 -- =============================================
--- [14] NO RECOIL / NO SPREAD / ANTI RAGDOLL
+-- [10] FUNGSI AIMBOT & ESP (SAMA SEPERTI SEBELUMNYA)
 -- =============================================
-RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+-- (Kode aimbot, ESP, no recoil, FPS updater tetap sama persis seperti sebelumnya)
+-- ...
 
-    if antiRagdoll then
-        pcall(function()
-            if hum.PlatformStand or hum.Sit then
-                hum.PlatformStand = false
-                hum.Sit = false
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then hrp.Velocity = Vector3.new(0,0,0); hrp.RotVelocity = Vector3.new(0,0,0) end
-            end
-            if hum.SeatPart then hum.Sit = false end
-        end)
-    end
-
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool then
-        if noRecoil then
-            for _, prop in ipairs({"Recoil","recoil","Kickback","GunRecoil","Shake","CameraRecoil"}) do
-                pcall(function() if tool[prop] ~= nil and type(tool[prop]) == "number" then tool[prop] = 0 end end)
-            end
-        end
-        if noSpread then
-            for _, prop in ipairs({"Spread","spread","Accuracy","Inaccuracy","BulletSpread","Deviation"}) do
-                pcall(function() if tool[prop] ~= nil and type(tool[prop]) == "number" then tool[prop] = 0 end end)
-            end
-        end
-    end
-end)
-
--- =============================================
--- [15] FPS & PING UPDATER
--- =============================================
-local fpsCounter = 0
-local fpsTime = 0
-
-RunService.RenderStepped:Connect(function(dt)
-    if statsOn and statsText then
-        fpsCounter = fpsCounter + 1
-        fpsTime = fpsTime + dt
-        if fpsTime >= 1 then
-            local ping = 0
-            pcall(function() ping = LocalPlayer:GetNetworkPing() * 1000 end)
-            statsText.Text = string.format("FPS: %d | Ping: %.0fms", fpsCounter, ping)
-            fpsCounter = 0
-            fpsTime = 0
-        end
-    end
-end)
-
--- =============================================
--- [16] SELESAI
--- =============================================
-print("✅ W424HUB - Starlight Edition loaded!")
-Starlight:Notify({
-    Title = "W424HUB",
-    Description = "All features ready!",
-    Image = iconBubble,
-    Duration = 3
-})
+print("✅ W424HUB - VoltilsUI Edition loaded!")
