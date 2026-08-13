@@ -1,5 +1,5 @@
--- ========== W424HUB v4.3 – FIXED (All AddParagraph complete) ==========
-print("=== LOADING W424HUB v4.3 ===")
+-- ========== W424HUB v4.4 – UI FIXED ==========
+print("=== LOADING W424HUB v4.4 ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
 if not Kairo then return warn("Kairo failed") end
@@ -15,28 +15,26 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- ============================================
 -- WINDOW
--- ============================================
 local Window = Kairo:CreateWindow({
     Title = "W424HUB",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 450),
+    Size = UDim2.fromOffset(580, 480),
     Center = true,
     Draggable = true,
     Resize = false,
-    Badges = {"v4.3"},
+    Badges = {"v4.4"},
     MinimizeKey = Enum.KeyCode.RightShift,
     MinimizeButton = true,
     Config = { Enabled = true, Folder = "W424HUB_Config", AutoLoad = true }
 })
 if not Window then return end
 
-Window:Notify({Title="W424HUB v4.3", Description="Fixed! All paragraphs complete.", Color=Color3.fromRGB(0,200,50), Delay=3})
+Window:Notify({Title="W424HUB v4.4", Description="UI fully fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
 
--- ============================================
--- TAB MAIN – Player & Arsenal Mods
--- ============================================
+-- ==============================
+-- TAB MAIN
+-- ==============================
 local TabMain = Window:CreateTab("Main")
 Window:AddParagraph(TabMain, "Player Mods", "Character & weapon tweaks")
 
@@ -140,25 +138,13 @@ Window:AddToggle(TabMain, "No Spread (Arsenal)", "Set MaxSpread & SpreadRecovery
     applyWeaponMods()
 end)
 
-Window:AddDivider(TabMain, "Camera / FOV")
-
-local fovSliderValue = 70
-Window:AddSlider(TabMain, "Field of View (FOV)", "60-120 (CSGO/Valorant style)", 60, 120, 70, function(v)
-    fovSliderValue = v
-    pcall(function() workspace.CurrentCamera.FieldOfView = v end)
-end, "FOVSlider", true)
-
-pcall(function()
-    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = 70 end
-end)
-
--- ============================================
--- TAB COMBAT – Aimbot, Silent Aim, Triggerbot
--- ============================================
+-- ==============================
+-- TAB COMBAT
+-- ==============================
 local TabCombat = Window:CreateTab("Combat")
-Window:AddParagraph(TabCombat, "Aimbot", "Camera aimbot (visible)")
+Window:AddParagraph(TabCombat, "Aimbot Settings", "Camera aimbot & silent aim")
 
--- Variabel Camera Aimbot
+-- Variabel
 local aimbotEnabled = false
 local aimTrigger = "On Shoot"
 local isShooting = false
@@ -172,7 +158,6 @@ local usePrediction = false
 local predictionFactor = 0.2
 local useVisibilityCheck = true
 
--- Variabel Silent Aim (tanpa Actors)
 local silentAimEnabled = false
 local silentAimFOV = 150
 local silentAimDistance = 300
@@ -184,6 +169,21 @@ local silentAimPredFactor = 0.2
 local silentHookActive = false
 local silentOriginalCast = nil
 local aimMode = "Camera"
+
+local triggerbotEnabled = false
+local triggerDelay = 0.1
+local triggerFOV = 30
+local triggerLastShot = 0
+local aggressiveMode = false
+local burstShots = 3
+local burstDelay = 0.03
+local autoRecoilReset = false
+local triggerMethod = "Remote"
+local triggerDebug = false
+
+local wallbangEnabled = false
+local originalCast = nil
+local castHookActive = false
 
 -- FOV Circle
 local fovGui = Instance.new("ScreenGui")
@@ -204,7 +204,71 @@ Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1,0)
 
 local function updateFOVSize() fovFrame.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end
 
--- ===== SILENT AIM (LANGSUNG, TANPA ACTORS) =====
+-- FUNGSI
+local function isVisible(part)
+    if not useVisibilityCheck or not part then return true end
+    local origin = camera.CFrame.Position
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {LocalPlayer.Character}
+    params.IgnoreWater = true
+    local result = workspace:Raycast(origin, (part.Position - origin), params)
+    if result then
+        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
+        return hitChar and Players:GetPlayerFromCharacter(hitChar) ~= nil
+    end
+    return true
+end
+
+local function getBestTarget()
+    if not aimbotEnabled and not triggerbotEnabled and not wallbangEnabled then return nil end
+    local center = camera.ViewportSize / 2
+    local best, bestDist = nil, math.huge
+    local myChar = LocalPlayer.Character
+    if not myChar then return nil end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+    local myPos = myRoot.Position
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local c = p.Character
+        if not c then continue end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
+
+        local part = headshotOnly and c:FindFirstChild("Head") or c:FindFirstChild(targetPartName)
+        if not part then
+            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+        end
+        if not part then continue end
+
+        local targetPos = part.Position
+        if usePrediction then
+            targetPos = targetPos + (part.Velocity or Vector3.new()) * predictionFactor
+        end
+        if headshotOnly then
+            targetPos = targetPos + Vector3.new(0, 0.5, 0)
+        end
+
+        local dist = (targetPos - myPos).Magnitude
+        if dist > maxAimDistance then continue end
+        if not isVisible(part) then continue end
+
+        local pos, on = camera:WorldToViewportPoint(targetPos)
+        if on then
+            local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+            if screenDist <= fovRadius and screenDist < bestDist then
+                bestDist = screenDist
+                best = { Part = part, Position = targetPos, Player = p }
+            end
+        end
+    end
+    return best
+end
+
+-- SILENT AIM
 local function getSilentBestTarget()
     local center = camera.ViewportSize / 2
     local best, bestDist = nil, math.huge
@@ -309,121 +373,7 @@ local function removeSilentHook()
     Window:Notify({Title="Silent Aim", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
 end
 
--- FUNGSI VISIBILITY & GET TARGET UNTUK CAMERA AIMBOT
-local function isVisible(part)
-    if not useVisibilityCheck or not part then return true end
-    local origin = camera.CFrame.Position
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LocalPlayer.Character}
-    params.IgnoreWater = true
-    local result = workspace:Raycast(origin, (part.Position - origin), params)
-    if result then
-        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
-        return hitChar and Players:GetPlayerFromCharacter(hitChar) ~= nil
-    end
-    return true
-end
-
-local function getBestTarget()
-    if not aimbotEnabled and not triggerbotEnabled and not wallbangEnabled then return nil end
-    local center = camera.ViewportSize / 2
-    local best, bestDist = nil, math.huge
-    local myChar = LocalPlayer.Character
-    if not myChar then return nil end
-    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-    local myPos = myRoot.Position
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        local c = p.Character
-        if not c then continue end
-        local hum = c:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
-
-        local part = headshotOnly and c:FindFirstChild("Head") or c:FindFirstChild(targetPartName)
-        if not part then
-            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
-        end
-        if not part then continue end
-
-        local targetPos = part.Position
-        if usePrediction then
-            targetPos = targetPos + (part.Velocity or Vector3.new()) * predictionFactor
-        end
-        if headshotOnly then
-            targetPos = targetPos + Vector3.new(0, 0.5, 0)
-        end
-
-        local dist = (targetPos - myPos).Magnitude
-        if dist > maxAimDistance then continue end
-        if not isVisible(part) then continue end
-
-        local pos, on = camera:WorldToViewportPoint(targetPos)
-        if on then
-            local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-            if screenDist <= fovRadius and screenDist < bestDist then
-                bestDist = screenDist
-                best = { Part = part, Position = targetPos, Player = p }
-            end
-        end
-    end
-    return best
-end
-
--- ===== UI COMBAT =====
-Window:AddParagraph(TabCombat, "Aim Mode", "Pilih metode aim")
-Window:AddDropdown(TabCombat, "Aim Mode", "Camera (visible) or Silent (invisible)", {"Camera","Silent"}, false, "Camera", function(v)
-    aimMode = v
-    if v == "Silent" then
-        aimbotEnabled = false
-        if silentAimEnabled and not silentHookActive then setupSilentHook() end
-    else
-        if silentHookActive then removeSilentHook() end
-    end
-end)
-
-Window:AddDivider(TabCombat, "Camera Aimbot (visible)")
-Window:AddToggle(TabCombat, "Enable Camera Aimbot", "Gerakkan kamera ke target", false, function(s)
-    aimbotEnabled = s
-    if aimMode == "Camera" then
-        if s and silentHookActive then removeSilentHook() end
-    end
-end)
-Window:AddDropdown(TabCombat, "Trigger", "Kapan aim aktif", {"On Shoot","Always"}, false, "On Shoot", function(v) aimTrigger = v end)
-Window:AddToggle(TabCombat, "FOV Circle", "Tampilkan lingkaran FOV", false, function(s) fovFrame.Visible = s end)
-Window:AddSlider(TabCombat, "FOV Radius", "30-400", 30, 400, 100, function(v) fovRadius = v; updateFOVSize() end)
-Window:AddSlider(TabCombat, "Max Distance", "50-500", 50, 500, 300, function(v) maxAimDistance = v end)
-Window:AddToggle(TabCombat, "Anti Team", "Hindari tim sendiri", true, function(s) useTeamCheck = s end)
-Window:AddToggle(TabCombat, "Vis Check", "Periksa tembok", true, function(s) useVisibilityCheck = s end)
-Window:AddToggle(TabCombat, "Prediction", "Aim ke depan target", false, function(s) usePrediction = s end)
-Window:AddSlider(TabCombat, "Pred Factor", "0-100", 0, 100, 20, function(v) predictionFactor = v/100 end)
-Window:AddToggle(TabCombat, "Headshot Only", "Hanya Head", false, function(s) headshotOnly = s; if s then targetPartName = "Head" end end)
-Window:AddDropdown(TabCombat, "Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) if not headshotOnly then targetPartName = v end end)
-Window:AddSlider(TabCombat, "Smoothness", "1-10", 1, 10, 10, function(v) aimSmoothness = v/10 end)
-
-Window:AddDivider(TabCombat, "Silent Aim (invisible)")
-Window:AddToggle(TabCombat, "Enable Silent Aim", "Aim tanpa gerak kamera (hook 'cast')", false, function(s)
-    silentAimEnabled = s
-    if aimMode == "Silent" then
-        if s then setupSilentHook() else removeSilentHook() end
-    end
-end)
-Window:AddSlider(TabCombat, "Silent FOV", "30-400", 30, 400, 150, function(v) silentAimFOV = v end)
-Window:AddSlider(TabCombat, "Silent Distance", "50-500", 50, 500, 300, function(v) silentAimDistance = v end)
-Window:AddDropdown(TabCombat, "Silent Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) silentAimTargetPart = v end)
-Window:AddToggle(TabCombat, "Silent Wallbang", "Tembus tembok", false, function(s) silentAimWallbang = s end)
-Window:AddToggle(TabCombat, "Silent Anti Team", "Hindari tim", true, function(s) silentAimTeamCheck = s end)
-Window:AddToggle(TabCombat, "Silent Prediction", "Prediksi", false, function(s) silentAimPrediction = s end)
-Window:AddSlider(TabCombat, "Silent Pred Factor", "0-100", 0, 100, 20, function(v) silentAimPredFactor = v/100 end)
-
--- WALLBANG (Camera mode)
-local wallbangEnabled = false
-local originalCast = nil
-local castHookActive = false
-
+-- WALLBANG
 local function setupWallbang()
     if castHookActive then return end
     local castTable = nil
@@ -469,58 +419,7 @@ local function removeWallbang()
     Window:Notify({Title="Wallbang", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
 end
 
-Window:AddDivider(TabCombat, "Wallbang (Camera mode)")
-Window:AddToggle(TabCombat, "Enable Wallbang", "Tembus tembok (hook 'cast')", false, function(v)
-    wallbangEnabled = v
-    if aimMode == "Camera" then
-        if v then setupWallbang() else removeWallbang() end
-    else
-        Window:Notify({Title="Wallbang", Description="Gunakan Silent Wallbang", Color=Color3.fromRGB(255,255,0), Delay=2})
-    end
-end)
-
--- TRIGGERBOT (IMPROVED)
-local triggerbotEnabled = false
-local triggerDelay = 0.1
-local triggerFOV = 30
-local triggerLastShot = 0
-local aggressiveMode = false
-local burstShots = 3
-local burstDelay = 0.03
-local autoRecoilReset = false
-local triggerMethod = "Remote"
-local triggerDebug = false
-
-Window:AddDivider(TabCombat, "Triggerbot (Auto Shoot)")
-Window:AddToggle(TabCombat, "Enable Triggerbot", "Tembak otomatis saat crosshair di musuh", false, function(v) triggerbotEnabled = v end)
-Window:AddSlider(TabCombat, "Trigger Delay", "0.01-0.5s", 1, 50, 10, function(v) triggerDelay = v/100 end)
-Window:AddSlider(TabCombat, "Trigger FOV", "Pixel radius (5-100)", 5, 100, 30, function(v) triggerFOV = v end)
-Window:AddToggle(TabCombat, "Aggressive Mode", "Spam tembakan super cepat", false, function(v)
-    aggressiveMode = v
-    if v then
-        triggerDelay = 0.01
-        triggerFOV = math.max(triggerFOV, 40)
-        Window:Notify({Title="Aggressive Mode ON", Description="Spam aktif!", Color=Color3.fromRGB(255,0,0), Delay=2})
-    else
-        triggerDelay = 0.1
-        Window:Notify({Title="Aggressive Mode OFF", Description="Normal", Color=Color3.fromRGB(0,255,0), Delay=2})
-    end
-end)
-Window:AddSlider(TabCombat, "Burst Shots", "Tembakan per trigger (1-10)", 1, 10, 3, function(v) burstShots = v end)
-Window:AddSlider(TabCombat, "Burst Delay", "Jeda antar burst (0.01-0.1s)", 1, 10, 3, function(v) burstDelay = v/100 end)
-Window:AddDropdown(TabCombat, "Trigger Method", "Cara mengirim tembakan", {"Remote","MouseClick"}, false, "Remote", function(v) triggerMethod = v end)
-Window:AddToggle(TabCombat, "Trigger Debug", "Tampilkan notifikasi saat tembak", false, function(v) triggerDebug = v end)
-Window:AddToggle(TabCombat, "Auto Recoil Reset", "Geser mouse ke bawah otomatis", false, function(v) autoRecoilReset = v end)
-
--- INPUT SHOOT
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = true end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = false end
-end)
-
--- FUNGSI TEMBAK YANG ROBUST
+-- FUNGSI TEMBAK
 local function fireShot(targetPos)
     local success = false
     if triggerMethod == "Remote" then
@@ -567,6 +466,91 @@ local function fireShot(targetPos)
     end
 end
 
+-- INPUT SHOOT
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = true end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isShooting = false end
+end)
+
+-- ===== UI COMBAT =====
+Window:AddParagraph(TabCombat, "Aim Mode", "Pilih jenis aim")
+Window:AddDropdown(TabCombat, "Aim Mode", "Camera (visible) or Silent (invisible)", {"Camera","Silent"}, false, "Camera", function(v)
+    aimMode = v
+    if v == "Silent" then
+        aimbotEnabled = false
+        if silentAimEnabled and not silentHookActive then setupSilentHook() end
+    else
+        if silentHookActive then removeSilentHook() end
+    end
+end)
+
+Window:AddDivider(TabCombat, "Camera Aimbot")
+Window:AddToggle(TabCombat, "Enable Camera Aimbot", "Gerakkan kamera ke target", false, function(s)
+    aimbotEnabled = s
+    if aimMode == "Camera" then
+        if s and silentHookActive then removeSilentHook() end
+    end
+end)
+Window:AddDropdown(TabCombat, "Trigger", "Kapan aim aktif", {"On Shoot","Always"}, false, "On Shoot", function(v) aimTrigger = v end)
+Window:AddToggle(TabCombat, "FOV Circle", "Tampilkan lingkaran FOV", false, function(s) fovFrame.Visible = s end)
+Window:AddSlider(TabCombat, "FOV Radius", "30-400", 30, 400, 100, function(v) fovRadius = v; updateFOVSize() end)
+Window:AddSlider(TabCombat, "Max Distance", "50-500", 50, 500, 300, function(v) maxAimDistance = v end)
+Window:AddToggle(TabCombat, "Anti Team", "Hindari tim sendiri", true, function(s) useTeamCheck = s end)
+Window:AddToggle(TabCombat, "Vis Check", "Periksa tembok", true, function(s) useVisibilityCheck = s end)
+Window:AddToggle(TabCombat, "Prediction", "Aim ke depan target", false, function(s) usePrediction = s end)
+Window:AddSlider(TabCombat, "Pred Factor", "0-100", 0, 100, 20, function(v) predictionFactor = v/100 end)
+Window:AddToggle(TabCombat, "Headshot Only", "Hanya Head", false, function(s) headshotOnly = s; if s then targetPartName = "Head" end end)
+Window:AddDropdown(TabCombat, "Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) if not headshotOnly then targetPartName = v end end)
+Window:AddSlider(TabCombat, "Smoothness", "1-10", 1, 10, 10, function(v) aimSmoothness = v/10 end)
+
+Window:AddDivider(TabCombat, "Silent Aim")
+Window:AddToggle(TabCombat, "Enable Silent Aim", "Aim tanpa gerak kamera (hook 'cast')", false, function(s)
+    silentAimEnabled = s
+    if aimMode == "Silent" then
+        if s then setupSilentHook() else removeSilentHook() end
+    end
+end)
+Window:AddSlider(TabCombat, "Silent FOV", "30-400", 30, 400, 150, function(v) silentAimFOV = v end)
+Window:AddSlider(TabCombat, "Silent Distance", "50-500", 50, 500, 300, function(v) silentAimDistance = v end)
+Window:AddDropdown(TabCombat, "Silent Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","Torso","UpperTorso"}, false, "Head", function(v) silentAimTargetPart = v end)
+Window:AddToggle(TabCombat, "Silent Wallbang", "Tembus tembok", false, function(s) silentAimWallbang = s end)
+Window:AddToggle(TabCombat, "Silent Anti Team", "Hindari tim", true, function(s) silentAimTeamCheck = s end)
+Window:AddToggle(TabCombat, "Silent Prediction", "Prediksi", false, function(s) silentAimPrediction = s end)
+Window:AddSlider(TabCombat, "Silent Pred Factor", "0-100", 0, 100, 20, function(v) silentAimPredFactor = v/100 end)
+
+Window:AddDivider(TabCombat, "Wallbang (Camera mode)")
+Window:AddToggle(TabCombat, "Enable Wallbang", "Tembus tembok (hook 'cast')", false, function(v)
+    wallbangEnabled = v
+    if aimMode == "Camera" then
+        if v then setupWallbang() else removeWallbang() end
+    else
+        Window:Notify({Title="Wallbang", Description="Gunakan Silent Wallbang", Color=Color3.fromRGB(255,255,0), Delay=2})
+    end
+end)
+
+Window:AddDivider(TabCombat, "Triggerbot (Auto Shoot)")
+Window:AddToggle(TabCombat, "Enable Triggerbot", "Tembak otomatis saat crosshair di musuh", false, function(v) triggerbotEnabled = v end)
+Window:AddSlider(TabCombat, "Trigger Delay", "0.01-0.5s", 1, 50, 10, function(v) triggerDelay = v/100 end)
+Window:AddSlider(TabCombat, "Trigger FOV", "Pixel radius (5-100)", 5, 100, 30, function(v) triggerFOV = v end)
+Window:AddToggle(TabCombat, "Aggressive Mode", "Spam tembakan super cepat", false, function(v)
+    aggressiveMode = v
+    if v then
+        triggerDelay = 0.01
+        triggerFOV = math.max(triggerFOV, 40)
+        Window:Notify({Title="Aggressive Mode ON", Description="Spam aktif!", Color=Color3.fromRGB(255,0,0), Delay=2})
+    else
+        triggerDelay = 0.1
+        Window:Notify({Title="Aggressive Mode OFF", Description="Normal", Color=Color3.fromRGB(0,255,0), Delay=2})
+    end
+end)
+Window:AddSlider(TabCombat, "Burst Shots", "Tembakan per trigger (1-10)", 1, 10, 3, function(v) burstShots = v end)
+Window:AddSlider(TabCombat, "Burst Delay", "Jeda antar burst (0.01-0.1s)", 1, 10, 3, function(v) burstDelay = v/100 end)
+Window:AddDropdown(TabCombat, "Trigger Method", "Cara mengirim tembakan", {"Remote","MouseClick"}, false, "Remote", function(v) triggerMethod = v end)
+Window:AddToggle(TabCombat, "Trigger Debug", "Tampilkan notifikasi saat tembak", false, function(v) triggerDebug = v end)
+Window:AddToggle(TabCombat, "Auto Recoil Reset", "Geser mouse ke bawah otomatis", false, function(v) autoRecoilReset = v end)
+
 -- MAIN LOOP
 RunService.RenderStepped:Connect(function(dt)
     local best = nil
@@ -574,7 +558,6 @@ RunService.RenderStepped:Connect(function(dt)
         best = getBestTarget()
     end
 
-    -- Camera Aimbot
     if aimMode == "Camera" and aimbotEnabled and best then
         local canAim = (aimTrigger == "On Shoot" and isShooting) or (aimTrigger == "Always")
         if canAim then
@@ -586,7 +569,6 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- TRIGGERBOT
     if triggerbotEnabled and best then
         local pos, onScreen = camera:WorldToViewportPoint(best.Position)
         if onScreen then
@@ -617,7 +599,6 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Auto Recoil Reset
     if autoRecoilReset and triggerbotEnabled and best then
         pcall(function()
             local screenPos, on = camera:WorldToViewportPoint(best.Position)
@@ -630,13 +611,12 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ============================================
--- TAB VISUAL – ESP, Line, Reduce Map, FPS/Ping
--- ============================================
+-- ==============================
+-- TAB VISUAL (dengan FOV slider)
+-- ==============================
 local TabVisual = Window:CreateTab("Visual")
-Window:AddParagraph(TabVisual, "ESP Chams", "Highlight enemies with color")
+Window:AddParagraph(TabVisual, "ESP Chams", "Highlight enemies")
 
--- ESP
 local espEnabled = false
 local espColor = Color3.fromRGB(255, 0, 0)
 local espTeam = true
@@ -812,7 +792,7 @@ RunService.RenderStepped:Connect(updateLineESP)
 Players.PlayerAdded:Connect(updateLineESP)
 Players.PlayerRemoving:Connect(updateLineESP)
 
--- REDUCE MAP SMOOTH
+-- REDUCE MAP
 Window:AddDivider(TabVisual, "Minimap Optimization")
 local reduceMap = false
 local mapOpacity = 1
@@ -882,7 +862,6 @@ Window:AddToggle(TabVisual, "Reduce Map", "Sembunyikan minimap", false, function
     if not s then applyOpacityToChildren(minimapContainer, mapOpacity) end
     updateMinimap()
 end)
-
 Window:AddSlider(TabVisual, "Map Opacity", "Transparansi (0-100%)", 0, 100, 100, function(v)
     mapOpacity = v / 100
     if not reduceMap and minimapContainer then
@@ -904,6 +883,18 @@ task.wait(1)
 refreshMinimap()
 CoreGui.ChildAdded:Connect(function() task.wait(0.5); refreshMinimap() end)
 LocalPlayer.PlayerGui.ChildAdded:Connect(function() task.wait(0.5); refreshMinimap() end)
+
+-- FOV SLIDER (Pindah ke Visual)
+Window:AddDivider(TabVisual, "Field of View")
+local fovSliderValue = 70
+Window:AddSlider(TabVisual, "FOV (Field of View)", "60-120 (CSGO/Valorant style)", 60, 120, 70, function(v)
+    fovSliderValue = v
+    pcall(function() workspace.CurrentCamera.FieldOfView = v end)
+end, "FOVSlider", true)
+
+pcall(function()
+    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = 70 end
+end)
 
 -- FPS & PING
 Window:AddDivider(TabVisual, "Stats")
@@ -983,9 +974,9 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ============================================
+-- ==============================
 -- TAB CONFIG
--- ============================================
+-- ==============================
 local TabConfig = Window:CreateTab("Config")
 Window:AddParagraph(TabConfig, "Configuration", "Save & Load settings")
 Window:AddButton(TabConfig, "Save Config", "Simpan setting ke file", function()
@@ -1002,12 +993,12 @@ Window:AddButton(TabConfig, "Reset All Settings", "Kembalikan semua ke default",
     Window:Notify({Title="Config", Description="All settings reset!", Color=Color3.fromRGB(255,255,0), Delay=2})
 end)
 Window:AddDivider(TabConfig, "Info")
-Window:AddParagraph(TabConfig, "Version", "W424HUB v4.3")
+Window:AddParagraph(TabConfig, "Version", "W424HUB v4.4")
 Window:AddParagraph(TabConfig, "Features", "Aimbot, Silent Aim, Triggerbot, Wallbang, ESP, Hitbox Expansion, Fast Fire, Reload, dll.")
 
--- ============================================
--- MAIN LOOP – PLAYER MODS
--- ============================================
+-- ==============================
+-- MAIN LOOP PLAYER MODS
+-- ==============================
 task.spawn(function()
     while true do
         pcall(function()
@@ -1064,4 +1055,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ W424HUB v4.3 loaded – ALL FIXED!")
+print("✅ W424HUB v4.4 loaded – UI COMPLETE!")
