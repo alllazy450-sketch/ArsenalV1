@@ -1,4 +1,4 @@
--- ========== W424HUB v3.8 - FULL EDITION (Dengan Silent Hitbox & Reduce Map) ==========
+-- ========== W424HUB v3.8  ==========
 print("=== W424HUB LOADING ===")
 
 -- Cek Kairo
