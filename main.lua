@@ -15,11 +15,11 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ========== MAIN WINDOW (SIZE 500x300) ==========
+-- ========== MAIN WINDOW (SIZE 480x480) ==========
 local Window = Kairo:CreateWindow({
     Title = "W424HUB",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 300),   -- <-- UKURAN BARU
+    Size = UDim2.fromOffset(480, 480),   -- <-- UKURAN BARU
     Center = true,
     Draggable = true,
     Resize = false,
