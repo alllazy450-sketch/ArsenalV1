@@ -1,4 +1,7 @@
--===== W424====-
+-- ============================================================
+--  W424HUB v5.3 – AIM & PREDICT TAB (Reduce Map Fixed)
+--  Mobile Friendly | Accurate Prediction | Headshot Only
+-- ============================================================
 print("=== LOADING W424HUB v5.3 (Reduce Map Fixed) ===")
 
 -- ============================================================
@@ -27,7 +30,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local Window = Kairo:CreateWindow({
     Title = "W424HUB v5.3",
     Theme = "Ocean",
-    Size = UDim2.fromOffset(500, 480),
+    Size = UDim2.fromOffset(600, 490),
     Center = true,
     Draggable = true,
     Resize = false,
@@ -1046,5 +1049,5 @@ end)
 -- ============================================================
 --  FINAL INIT
 -- ============================================================
-print("✅ W424HUB v5.3 –  loaded!")
+print("✅ W424HUB v5.3 – loaded!")
 Window:Notify({Title="W424HUB v5.3", Description="Reduce Map fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
