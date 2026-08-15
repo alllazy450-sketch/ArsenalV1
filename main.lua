@@ -1,5 +1,5 @@
--- ========== W424HUB v4.4 – UI FIXED ==========
-print("=== LOADING W424HUB v4.4 ===")
+-- ========== W424HUB v4.4 – HEADSHOT FIXED ==========
+print("=== LOADING W424HUB v4.4 (HEADSHOT FIX) ===")
 
 local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
 if not Kairo then return warn("Kairo failed") end
@@ -30,7 +30,7 @@ local Window = Kairo:CreateWindow({
 })
 if not Window then return end
 
-Window:Notify({Title="W424HUB v4.4", Description="UI fully fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
+Window:Notify({Title="W424HUB v4.4", Description="Headshot fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
 
 -- ==============================
 -- TAB MAIN
@@ -204,7 +204,7 @@ Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1,0)
 
 local function updateFOVSize() fovFrame.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2) end
 
--- FUNGSI
+-- FUNGSI isVisible (sama)
 local function isVisible(part)
     if not useVisibilityCheck or not part then return true end
     local origin = camera.CFrame.Position
@@ -220,6 +220,9 @@ local function isVisible(part)
     return true
 end
 
+-- ============================================================
+--  getBestTarget() – HEADSHOT FIXED & PREDICTION IMPROVED
+-- ============================================================
 local function getBestTarget()
     if not aimbotEnabled and not triggerbotEnabled and not wallbangEnabled then return nil end
     local center = camera.ViewportSize / 2
@@ -238,18 +241,38 @@ local function getBestTarget()
         if not hum or hum.Health <= 0 then continue end
         if useTeamCheck and LocalPlayer.Team and p.Team and LocalPlayer.Team == p.Team then continue end
 
-        local part = headshotOnly and c:FindFirstChild("Head") or c:FindFirstChild(targetPartName)
-        if not part then
-            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+        local part = nil
+
+        -- HEADSHOT ONLY
+        if headshotOnly then
+            part = c:FindFirstChild("Head")
+            if not part then
+                -- Jika Head tidak ada, skip target (tidak fallback)
+                continue
+            end
+        else
+            part = c:FindFirstChild(targetPartName)
+            if not part then
+                -- Fallback jika part yang dipilih tidak ada
+                part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("UpperTorso") or c:FindFirstChild("Torso")
+                if not part then continue end
+            end
         end
-        if not part then continue end
 
         local targetPos = part.Position
+
+        -- PREDIKSI (menggunakan velocity dari HumanoidRootPart)
         if usePrediction then
-            targetPos = targetPos + (part.Velocity or Vector3.new()) * predictionFactor
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local vel = hrp.Velocity or Vector3.new()
+                targetPos = targetPos + vel * predictionFactor
+            end
         end
-        if headshotOnly then
-            targetPos = targetPos + Vector3.new(0, 0.5, 0)
+
+        -- Offset untuk headshot (hanya jika part benar-benar Head)
+        if headshotOnly and part.Name == "Head" then
+            targetPos = targetPos + Vector3.new(0, 0.3, 0)
         end
 
         local dist = (targetPos - myPos).Magnitude
@@ -268,7 +291,9 @@ local function getBestTarget()
     return best
 end
 
--- SILENT AIM
+-- ============================================================
+--  getSilentBestTarget() – HEADSHOT FIXED & PREDICTION IMPROVED
+-- ============================================================
 local function getSilentBestTarget()
     local center = camera.ViewportSize / 2
     local best, bestDist = nil, math.huge
@@ -289,13 +314,23 @@ local function getSilentBestTarget()
 
         local part = c:FindFirstChild(silentAimTargetPart)
         if not part then
-            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+            part = c:FindFirstChild("Head") or c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("UpperTorso") or c:FindFirstChild("Torso")
         end
         if not part then continue end
 
         local targetPos = part.Position
+
         if silentAimPrediction then
-            targetPos = targetPos + (part.Velocity or Vector3.new()) * silentAimPredFactor
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local vel = hrp.Velocity or Vector3.new()
+                targetPos = targetPos + vel * silentAimPredFactor
+            end
+        end
+
+        -- Offset untuk Head (jika target part adalah Head)
+        if silentAimTargetPart == "Head" and part.Name == "Head" then
+            targetPos = targetPos + Vector3.new(0, 0.3, 0)
         end
 
         local dist = (targetPos - myPos).Magnitude
@@ -328,6 +363,9 @@ local function getSilentBestTarget()
     return best
 end
 
+-- ============================================================
+--  SILENT AIM HOOK
+-- ============================================================
 local function setupSilentHook()
     if silentHookActive then return end
     local castTable = nil
@@ -373,7 +411,9 @@ local function removeSilentHook()
     Window:Notify({Title="Silent Aim", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
 end
 
--- WALLBANG
+-- ============================================================
+--  WALLBANG
+-- ============================================================
 local function setupWallbang()
     if castHookActive then return end
     local castTable = nil
@@ -419,7 +459,9 @@ local function removeWallbang()
     Window:Notify({Title="Wallbang", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
 end
 
--- FUNGSI TEMBAK
+-- ============================================================
+--  FUNGSI TEMBAK
+-- ============================================================
 local function fireShot(targetPos)
     local success = false
     if triggerMethod == "Remote" then
@@ -1055,4 +1097,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ W424HUB v4.4 loaded – UI COMPLETE!")
+print("✅ W424HUB v4.4 HEADSHOT FIX loaded – Headshot only & prediction improved!")
