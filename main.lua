@@ -1,487 +1,1053 @@
 -- ============================================================
--- W424 HUB | ARSENAL ULTIMATE v5.6 (Smart Integrated)
--- UI Framework: Oxidelib (Midnight Theme)
--- Status: FULL FEATURES + STABILITY IMPROVED
+--  W424HUB v5.3 – AIM & PREDICT TAB (Reduce Map Fixed)
+--  Mobile Friendly | Accurate Prediction | Headshot Only
 -- ============================================================
+print("=== LOADING W424HUB v5.3 (Reduce Map Fixed) ===")
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Naellx/Oxidelib/main/Oxidelib.lua"))()
-Library:SetTheme("Midnight")
+-- ============================================================
+--  LOAD UI LIBRARY
+-- ============================================================
+local Kairo = loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzzavi335/Kairo-Ui-Library/refs/heads/main/source.luau"))()
+if not Kairo then return warn("Kairo failed") end
 
-local MY_LOGO = "rbxassetid://70773874533764"
-
--- [ SERVICES ]
+-- ============================================================
+--  SERVICES
+-- ============================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
-local Mouse = LocalPlayer:GetMouse()
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- [ STATE & CONFIG ]
-local Toggles = { 
-    Aimbot = false, Silent = false, WallCheck = true, Predict = true, 
-    FOV_Circle = false, InfAmmo = false, NoRecoil = false, NoSpread = false,
-    ESP_Enabled = false, TeamCheck = true, AntiAFK = true,
-    Triggerbot = false, AimLock = false, Fly = false, Noclip = false,
-    AutoJump = false, Tracers = false, BoxESP = false, HealthBar = false,
-    Chams = false, Crosshair = false
+-- ============================================================
+--  WINDOW
+-- ============================================================
+local Window = Kairo:CreateWindow({
+    Title = "W424HUB v5.3",
+    Theme = "Ocean",
+    Size = UDim2.fromOffset(480, 450),
+    Center = true,
+    Draggable = true,
+    Resize = false,
+    Badges = {"Aim+Pred", "v5.3"},
+    MinimizeKey = Enum.KeyCode.RightShift,
+    MinimizeButton = true,
+    Config = { Enabled = true, Folder = "W424HUB_v5_Config", AutoLoad = true }
+})
+if not Window then return end
+
+Window:Notify({Title="W424HUB v5.3", Description="Reduce Map fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
+
+-- ============================================================
+--  GLOBAL VARIABLES
+-- ============================================================
+local Features = {
+    noRecoil = false,
+    noSpread = false,
+    antiRagdoll = false,
+    antiAFK = false,
+    infiniteAmmo = false,
+    fastFire = false,
+    fastReload = false,
+    arsenalNoRecoil = false,
+    arsenalNoSpread = false,
+
+    aimbotEnabled = false,
+    aimTrigger = "On Shoot",
+    targetPart = "Head",
+    headshotOnly = false,
+    aimSmoothness = 0.3,
+    useTeamCheck = true,
+    fovRadius = 150,
+    maxAimDistance = 400,
+    useVisibilityCheck = true,
+    hitboxExpansion = 0,
+    targetPriority = "FOV",
+
+    usePrediction = true,
+    predictionFactor = 0.3,
+    bulletSpeed = 800,
+
+    silentAimEnabled = false,
+    silentAimFOV = 200,
+    silentAimDistance = 400,
+    silentAimTargetPart = "Head",
+    silentAimWallbang = true,
+    silentAimTeamCheck = true,
+    silentAimPrediction = true,
+    silentAimPredFactor = 0.3,
+
+    triggerbotEnabled = false,
+    triggerDelay = 0.08,
+    triggerFOV = 35,
+    triggerHeadshotOnly = false,
+    aggressiveMode = false,
+    burstShots = 3,
+    burstDelay = 0.03,
+    triggerMethod = "Remote",
+    triggerDebug = false,
+
+    wallbangEnabled = false,
+
+    espEnabled = false,
+    espColor = Color3.fromRGB(255, 0, 0),
+    espTeamCheck = true,
+    espTransparency = 0.3,
+
+    fovValue = 70,
+    statsEnabled = false,
+    reduceMap = false,
 }
-local Settings = { 
-    Smoothness = 3, FovRadius = 150, TargetPart = "Head", 
-    BulletSpeed = 950, PredFactor = 0.5, AimMode = "On Shoot",
-    WalkSpeed = 16, JumpPower = 50, FOVPosition = "Center",
-    TriggerbotDelay = 0.1, ChamsColor = Color3.fromRGB(255,0,0),
-    BoxColor = Color3.fromRGB(255,255,255), TracerColor = Color3.fromRGB(0,255,0)
-}
-local Keybinds = {
-    Aimbot = Enum.KeyCode.LeftControl,
-    Silent = Enum.KeyCode.LeftShift,
-    ESP = Enum.KeyCode.F1,
-    Triggerbot = Enum.KeyCode.F2,
-    Fly = Enum.KeyCode.F3,
-    Noclip = Enum.KeyCode.F4,
-}
-local LockedTarget = nil
-local FOVCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
--- [ FOV CIRCLE ]
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Transparency = 0.7
-FOVCircle.NumSides = 64
-FOVCircle.Filled = false
-FOVCircle.Visible = false
+-- ============================================================
+--  REDUCE MAP – IMPROVED (deteksi minimap secara agresif)
+-- ============================================================
+local foundMinimap = nil
+local minimapWatchConnections = {}
 
--- [ CROSSHAIR ]
-local Crosshair = Drawing.new("Crosshair")
-Crosshair.Color = Color3.fromRGB(255,255,255)
-Crosshair.Thickness = 1
-Crosshair.Size = 10
-Crosshair.Visible = false
+local function findMinimap()
+    -- Cari di CoreGui
+    for _, gui in ipairs(CoreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local name = gui.Name:lower()
+            if name:find("minimap") or name:find("map") or name:find("hud") then
+                -- Cek apakah ada ViewportFrame (tanda minimap)
+                local vp = gui:FindFirstChildWhichIsA("ViewportFrame")
+                if vp then return gui end
+                for _, child in ipairs(gui:GetDescendants()) do
+                    if child:IsA("ViewportFrame") then return gui end
+                end
+            end
+        end
+    end
+    
+    -- Cari di PlayerGui
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if playerGui then
+        for _, gui in ipairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                local name = gui.Name:lower()
+                if name:find("minimap") or name:find("map") or name:find("hud") then
+                    local vp = gui:FindFirstChildWhichIsA("ViewportFrame")
+                    if vp then return gui end
+                    for _, child in ipairs(gui:GetDescendants()) do
+                        if child:IsA("ViewportFrame") then return gui end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
 
--- [ ESP DRAWINGS ]
-local ESPObjects = {}
+local function applyReduceMap(shouldHide)
+    -- Metode 1: SetCore (standar)
+    pcall(function() StarterGui:SetCore("MinimapEnabled", not shouldHide) end)
+    
+    -- Metode 2: Cari GUI minimap dan sembunyikan
+    if not foundMinimap then
+        foundMinimap = findMinimap()
+    end
+    
+    if foundMinimap then
+        if shouldHide then
+            if not foundMinimap:GetAttribute("OriginalSize") then
+                foundMinimap:SetAttribute("OriginalSize", foundMinimap.Size)
+            end
+            foundMinimap.Visible = false
+            foundMinimap.Size = UDim2.new(0,0,0,0)
+        else
+            foundMinimap.Visible = true
+            local orig = foundMinimap:GetAttribute("OriginalSize")
+            if orig then
+                foundMinimap.Size = orig
+            else
+                foundMinimap.Size = UDim2.new(1,0,1,0)
+            end
+        end
+    end
+end
 
--- [ UTILITY FUNCTIONS ]
-local function isAlive(char)
-    local hum = char:FindFirstChildOfClass("Humanoid")
+-- Listener untuk minimap yang muncul belakangan
+local function watchForMinimap()
+    -- CoreGui
+    local conn1 = CoreGui.ChildAdded:Connect(function(child)
+        if child:IsA("ScreenGui") then
+            task.wait(0.5)
+            local name = child.Name:lower()
+            if name:find("minimap") or name:find("map") or name:find("hud") then
+                local vp = child:FindFirstChildWhichIsA("ViewportFrame")
+                if vp then
+                    foundMinimap = child
+                    if Features.reduceMap then
+                        applyReduceMap(true)
+                    end
+                end
+            end
+        end
+    end)
+    table.insert(minimapWatchConnections, conn1)
+    
+    -- PlayerGui
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if playerGui then
+        local conn2 = playerGui.ChildAdded:Connect(function(child)
+            if child:IsA("ScreenGui") then
+                task.wait(0.5)
+                local name = child.Name:lower()
+                if name:find("minimap") or name:find("map") or name:find("hud") then
+                    local vp = child:FindFirstChildWhichIsA("ViewportFrame")
+                    if vp then
+                        foundMinimap = child
+                        if Features.reduceMap then
+                            applyReduceMap(true)
+                        end
+                    end
+                end
+            end
+        end)
+        table.insert(minimapWatchConnections, conn2)
+    end
+end
+
+-- Jalankan watch
+watchForMinimap()
+
+-- ============================================================
+--  HELPER FUNCTIONS
+-- ============================================================
+local function isAlive(character)
+    if not character then return false end
+    local hum = character:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
 end
 
-local function isVisible(part)
-    if not Toggles.WallCheck then return true end
+local function getPart(character, partName, headshotOnly)
+    if headshotOnly then
+        return character:FindFirstChild("Head") or character:FindFirstChild("head")
+    end
+    local part = character:FindFirstChild(partName)
+    if not part then
+        part = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+    end
+    return part
+end
+
+local function isVisible(origin, targetPos, ignoreList)
+    if not Features.useVisibilityCheck then return true end
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    local res = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
-    return not res or res.Instance:IsDescendantOf(part.Parent)
+    params.FilterDescendantsInstances = ignoreList or {LocalPlayer.Character}
+    params.IgnoreWater = true
+    local result = workspace:Raycast(origin, (targetPos - origin), params)
+    if result then
+        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
+        if hitChar then
+            return Players:GetPlayerFromCharacter(hitChar) ~= nil
+        end
+        return false
+    end
+    return true
+end
+
+-- ============================================================
+--  AIMBOT CORE
+-- ============================================================
+local function getTargets()
+    local targets = {}
+    local myChar = LocalPlayer.Character
+    if not myChar then return targets end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return targets end
+    local myPos = myRoot.Position
+    local myTeam = LocalPlayer.Team
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        local char = player.Character
+        if not char then continue end
+        if not isAlive(char) then continue end
+
+        if Features.useTeamCheck and myTeam and player.Team == myTeam then
+            continue
+        end
+
+        local part = getPart(char, Features.targetPart, Features.headshotOnly)
+        if not part then continue end
+
+        local targetPos = part.Position
+        local dist = (targetPos - myPos).Magnitude
+        if dist > Features.maxAimDistance then continue end
+
+        if Features.hitboxExpansion > 0 and part.Name == "Head" then
+            targetPos = targetPos + (part.CFrame.UpVector * Features.hitboxExpansion * 0.15)
+        end
+
+        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+        if not onScreen then continue end
+        local center = camera.ViewportSize / 2
+        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+        if screenDist > Features.fovRadius then continue end
+
+        local predictedPos = targetPos
+        if Features.usePrediction then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local vel = hrp.Velocity or Vector3.new()
+                local travelTime = dist / Features.bulletSpeed
+                local predFactor = Features.predictionFactor * travelTime
+                predictedPos = targetPos + vel * predFactor
+            end
+        end
+
+        table.insert(targets, {
+            Player = player,
+            Character = char,
+            Part = part,
+            Position = predictedPos,
+            ScreenDist = screenDist,
+            WorldDist = dist,
+        })
+    end
+
+    return targets
 end
 
 local function getBestTarget()
-    local target, dist = nil, Settings.FovRadius
-    local center = (Settings.FOVPosition == "Center") and FOVCenter or UserInputService:GetMouseLocation()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
-            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
-            local part = plr.Character:FindFirstChild(Settings.TargetPart)
-            if part and isVisible(part) then
-                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local mDist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
-                    if mDist < dist then dist = mDist target = part end
+    local targets = getTargets()
+    if #targets == 0 then return nil end
+
+    if Features.targetPriority == "FOV" then
+        table.sort(targets, function(a, b) return a.ScreenDist < b.ScreenDist end)
+    else
+        table.sort(targets, function(a, b) return a.WorldDist < b.WorldDist end)
+    end
+
+    return targets[1]
+end
+
+-- ============================================================
+--  SILENT AIM
+-- ============================================================
+local silentHookActive = false
+local silentOriginalCast = nil
+
+local function getSilentTargets()
+    local targets = {}
+    local myChar = LocalPlayer.Character
+    if not myChar then return targets end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return targets end
+    local myPos = myRoot.Position
+    local myTeam = LocalPlayer.Team
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        local char = player.Character
+        if not char then continue end
+        if not isAlive(char) then continue end
+
+        if Features.silentAimTeamCheck and myTeam and player.Team == myTeam then
+            continue
+        end
+
+        local part = getPart(char, Features.silentAimTargetPart, false)
+        if not part then continue end
+
+        local targetPos = part.Position
+        local dist = (targetPos - myPos).Magnitude
+        if dist > Features.silentAimDistance then continue end
+
+        if not Features.silentAimWallbang then
+            if not isVisible(camera.CFrame.Position, targetPos, {myChar}) then
+                continue
+            end
+        end
+
+        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+        if not onScreen then continue end
+        local center = camera.ViewportSize / 2
+        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+        if screenDist > Features.silentAimFOV then continue end
+
+        if Features.silentAimPrediction then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local vel = hrp.Velocity or Vector3.new()
+                local travelTime = dist / Features.bulletSpeed
+                local predFactor = Features.silentAimPredFactor * travelTime
+                targetPos = targetPos + vel * predFactor
+            end
+        end
+
+        table.insert(targets, {
+            Player = player,
+            Character = char,
+            Part = part,
+            Position = targetPos,
+            ScreenDist = screenDist,
+            WorldDist = dist,
+        })
+    end
+
+    table.sort(targets, function(a, b) return a.ScreenDist < b.ScreenDist end)
+    return targets[1]
+end
+
+local function setupSilentHook()
+    if silentHookActive then return end
+    local castTable = nil
+    for i, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "cast") then
+            castTable = v
+            break
+        end
+    end
+    if not castTable then
+        Window:Notify({Title="Silent Aim Error", Description="Fungsi 'cast' tidak ditemukan", Color=Color3.fromRGB(255,0,0), Delay=3})
+        return
+    end
+    silentOriginalCast = castTable.cast
+    if not silentOriginalCast then return end
+    silentHookActive = true
+    castTable.cast = function(p1, p2, p3)
+        if Features.silentAimEnabled then
+            local best = getSilentTargets()
+            if best then
+                return best.Part, best.Position, Vector3.new(0,1,0), best.Part.Material
+            end
+        end
+        return silentOriginalCast(p1, p2, p3)
+    end
+    Window:Notify({Title="Silent Aim", Description="Hook installed!", Color=Color3.fromRGB(0,255,0), Delay=2})
+end
+
+local function removeSilentHook()
+    if not silentHookActive then return end
+    local castTable = nil
+    for i, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "cast") then
+            castTable = v
+            break
+        end
+    end
+    if castTable and silentOriginalCast then
+        castTable.cast = silentOriginalCast
+    end
+    silentHookActive = false
+    silentOriginalCast = nil
+    Window:Notify({Title="Silent Aim", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
+end
+
+-- ============================================================
+--  WALLBANG HOOK
+-- ============================================================
+local wallbangHookActive = false
+local wallbangOriginalCast = nil
+
+local function setupWallbangHook()
+    if wallbangHookActive then return end
+    local castTable = nil
+    for i, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "cast") then
+            castTable = v
+            break
+        end
+    end
+    if not castTable then
+        Window:Notify({Title="Wallbang Error", Description="Fungsi 'cast' tidak ditemukan", Color=Color3.fromRGB(255,0,0), Delay=3})
+        return
+    end
+    wallbangOriginalCast = castTable.cast
+    if not wallbangOriginalCast then return end
+    wallbangHookActive = true
+    castTable.cast = function(p1, p2, p3)
+        if Features.wallbangEnabled then
+            local best = getBestTarget()
+            if best then
+                return best.Part, best.Position, Vector3.new(0,1,0), best.Part.Material
+            end
+        end
+        return wallbangOriginalCast(p1, p2, p3)
+    end
+    Window:Notify({Title="Wallbang", Description="Hook installed!", Color=Color3.fromRGB(0,255,0), Delay=2})
+end
+
+local function removeWallbangHook()
+    if not wallbangHookActive then return end
+    local castTable = nil
+    for i, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "cast") then
+            castTable = v
+            break
+        end
+    end
+    if castTable and wallbangOriginalCast then
+        castTable.cast = wallbangOriginalCast
+    end
+    wallbangHookActive = false
+    wallbangOriginalCast = nil
+    Window:Notify({Title="Wallbang", Description="Hook removed", Color=Color3.fromRGB(255,255,0), Delay=2})
+end
+
+-- ============================================================
+--  TRIGGERBOT FIRE
+-- ============================================================
+local isShooting = false
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isShooting = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isShooting = false
+    end
+end)
+
+local function fireShot(targetPos)
+    local success = false
+    if Features.triggerMethod == "Remote" then
+        local remotes = {
+            ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Shoot"),
+            ReplicatedStorage:FindFirstChild("Shoot"),
+            ReplicatedStorage:FindFirstChild("Fire"),
+            ReplicatedStorage:FindFirstChild("GunEvent"),
+            ReplicatedStorage:FindFirstChild("RemoteEvent"),
+            ReplicatedStorage:FindFirstChild("Weapon") and ReplicatedStorage.Weapon:FindFirstChild("Fire"),
+        }
+        for _, remote in ipairs(remotes) do
+            if remote then
+                pcall(function() remote:FireServer(targetPos) end)
+                success = true
+                break
+            end
+        end
+        if not success then
+            for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                    local name = child.Name:lower()
+                    if name:find("shoot") or name:find("fire") or name:find("gun") or name:find("attack") then
+                        pcall(function() child:FireServer(targetPos) end)
+                        success = true
+                        break
+                    end
                 end
             end
         end
     end
-    return target
-end
 
-local function getClosestToCrosshair()
-    local center = (Settings.FOVPosition == "Center") and FOVCenter or UserInputService:GetMouseLocation()
-    local best, bestDist = nil, math.huge
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
-            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
-            local part = plr.Character:FindFirstChild(Settings.TargetPart) or plr.Character:FindFirstChild("HumanoidRootPart")
-            if part and isVisible(part) then
-                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local dist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
-                    if dist < bestDist then bestDist = dist best = part end
-                end
-            end
-        end
-    end
-    return best
-end
-
--- [ SAVE/LOAD CONFIG ]
-local CONFIG_FILE = "W424_Config.json"
-local function saveConfig()
-    local data = { Toggles = Toggles, Settings = Settings, Keybinds = Keybinds }
-    local json = HttpService:JSONEncode(data)
-    pcall(function() writefile(CONFIG_FILE, json) end)
-end
-local function loadConfig()
-    if not pcall(function() return readfile(CONFIG_FILE) end) then return end
-    local json = readfile(CONFIG_FILE)
-    local data = HttpService:JSONDecode(json)
-    if data then
-        for k,v in pairs(data.Toggles) do Toggles[k] = v end
-        for k,v in pairs(data.Settings) do Settings[k] = v end
-        for k,v in pairs(data.Keybinds) do Keybinds[k] = v end
-    end
-end
-loadConfig()
-
--- [ SILENT AIM ]
-local oldMouseHit = nil
-local function silentAimFire()
-    if not Toggles.Silent then return end
-    local target = getBestTarget()
-    if target then
-        local origin = Camera.CFrame.Position
-        local targetPos = target.Position
-        if Toggles.Predict then
-            local dist = (origin - targetPos).Magnitude
-            targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
-        end
-        local dir = (targetPos - origin).Unit
-        oldMouseHit = Mouse.Hit
-        Mouse.Hit = CFrame.new(origin + dir * 10, origin + dir * 100)
-        task.spawn(function()
-            task.wait(0.05)
-            if oldMouseHit then Mouse.Hit = oldMouseHit end
+    if not success or Features.triggerMethod == "MouseClick" then
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+            task.wait(0.01)
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+            success = true
         end)
     end
-end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and Toggles.Silent then
-        silentAimFire()
-    end
-end)
-
--- [ NO RECOIL/SPREAD ]
-RunService.RenderStepped:Connect(function()
-    if Toggles.NoRecoil or Toggles.NoSpread then
-        local char = LocalPlayer.Character
-        if char then
-            local weapon = char:FindFirstChildOfClass("Tool")
-            if weapon then
-                pcall(function()
-                    if weapon:FindFirstChild("Recoil") then weapon.Recoil.Value = 0 end
-                    if weapon:FindFirstChild("Spread") then weapon.Spread.Value = 0 end
-                    if weapon:FindFirstChild("Accuracy") then weapon.Accuracy.Value = 100 end
-                end)
-            end
-        end
-    end
-end)
-
--- [ INFINITE AMMO ]
-task.spawn(function()
-    while task.wait(0.5) do
-        if Toggles.InfAmmo then
-            local char = LocalPlayer.Character
-            if char then
-                local weapon = char:FindFirstChildOfClass("Tool")
-                if weapon then
-                    pcall(function()
-                        if weapon:FindFirstChild("Ammo") then weapon.Ammo.Value = weapon.MaxAmmo.Value end
-                        if weapon:FindFirstChild("CurrentAmmo") then weapon.CurrentAmmo.Value = weapon.MaxAmmo.Value end
-                    end)
-                end
-            end
-        end
-    end
-end)
-
--- [ FLY & NOCLIP ]
-local flyBodyVelocity = nil
-local function toggleFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    if Toggles.Fly then
-        hum.PlatformStand = true
-        flyBodyVelocity = Instance.new("BodyVelocity")
-        flyBodyVelocity.MaxForce = Vector3.new(1e6,1e6,1e6)
-        flyBodyVelocity.Velocity = Vector3.new(0,0,0)
-        flyBodyVelocity.Parent = char:FindFirstChild("HumanoidRootPart")
-    else
-        if flyBodyVelocity then flyBodyVelocity:Destroy() end
-        hum.PlatformStand = false
+    if Features.triggerDebug and success then
+        Window:Notify({Title="Trigger", Description="Shot fired!", Color=Color3.fromRGB(255,255,0), Delay=0.5})
     end
 end
 
-local function toggleNoclip()
-    pcall(function()
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.CanCollide = not Toggles.Noclip end
-    end)
+-- ============================================================
+--  FOV CIRCLE
+-- ============================================================
+local fovGui = Instance.new("ScreenGui")
+fovGui.Name = "W424_FOV_GUI"
+fovGui.Parent = CoreGui
+fovGui.ResetOnSpawn = false
+fovGui.IgnoreGuiInset = true
+
+local fovFrame = Instance.new("Frame")
+fovFrame.BackgroundTransparency = 1
+fovFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+fovFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovFrame.Size = UDim2.new(0, Features.fovRadius * 2, 0, Features.fovRadius * 2)
+fovFrame.Visible = false
+fovFrame.Parent = fovGui
+Instance.new("UIStroke", fovFrame).Color = Color3.fromRGB(255,255,255)
+Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1,0)
+
+local function updateFOVSize()
+    fovFrame.Size = UDim2.new(0, Features.fovRadius * 2, 0, Features.fovRadius * 2)
 end
 
--- [ AUTO JUMP ]
-RunService.Heartbeat:Connect(function()
-    if Toggles.AutoJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and hum.MoveDirection.Magnitude > 0 and hum.FloorMaterial ~= Enum.Material.Air then
-                hum.Jump = true
-            end
-        end
-    end
-end)
+-- ============================================================
+--  MAIN LOOP
+-- ============================================================
+local triggerLastShot = 0
 
--- [ TRIGGERBOT ]
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if Toggles.Triggerbot and input.UserInputType == Enum.UserInputType.MouseButton2 then
-        local target = getClosestToCrosshair()
-        if target then
-            local char = LocalPlayer.Character
-            if char then
-                local weapon = char:FindFirstChildOfClass("Tool")
-                if weapon then
-                    weapon:Activate()
-                    task.wait(Settings.TriggerbotDelay)
-                    weapon:Deactivate()
-                end
-            end
-        end
-    end
-end)
-
--- [ AIMLOCK ]
-RunService.RenderStepped:Connect(function()
-    if Toggles.AimLock then
-        if not LockedTarget or not isAlive(LockedTarget.Parent) then
-            LockedTarget = getBestTarget()
-        end
-        if LockedTarget then
-            local targetPos = LockedTarget.Position
-            if Toggles.Predict then
-                local dist = (Camera.CFrame.Position - targetPos).Magnitude
-                targetPos = targetPos + (LockedTarget.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
-            end
-            local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * 0.1 * 2))
-        end
-    end
-end)
-
--- [ ESP UPDATE ]
-local function updateESP()
-    for _, obj in pairs(ESPObjects) do
-        pcall(function() obj:Destroy() end)
-    end
-    ESPObjects = {}
-    if not Toggles.ESP_Enabled then return end
-
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        local char = plr.Character
-        if not char or not isAlive(char) then continue end
-        local teamCheck = Toggles.TeamCheck and plr.Team == LocalPlayer.Team
-        if teamCheck then continue end
-
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local head = char:FindFirstChild("Head")
-        if not root or not head then continue end
-
-        local sPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if not onScreen then continue end
-        local sHead, _ = Camera:WorldToViewportPoint(head.Position)
-        local height = (sHead.Y - sPos.Y) * 1.5
-        local width = height * 0.5
-        local topLeft = Vector2.new(sPos.X - width/2, sHead.Y)
-        local bottomRight = Vector2.new(sPos.X + width/2, sPos.Y)
-
-        -- Box
-        if Toggles.BoxESP then
-            local box = Drawing.new("Square")
-            box.Position = topLeft
-            box.Size = Vector2.new(width, height)
-            box.Thickness = 1
-            box.Color = Settings.BoxColor
-            box.Transparency = 0.5
-            box.Filled = false
-            table.insert(ESPObjects, box)
-        end
-
-        -- Health Bar
-        if Toggles.HealthBar then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                local hp = hum.Health / hum.MaxHealth
-                local bg = Drawing.new("Line")
-                bg.From = Vector2.new(topLeft.X - 6, topLeft.Y)
-                bg.To = Vector2.new(topLeft.X - 6, bottomRight.Y)
-                bg.Color = Color3.fromRGB(50,50,50)
-                bg.Thickness = 4
-                table.insert(ESPObjects, bg)
-                local fill = Drawing.new("Line")
-                fill.From = Vector2.new(topLeft.X - 6, bottomRight.Y - (bottomRight.Y - topLeft.Y) * hp)
-                fill.To = Vector2.new(topLeft.X - 6, bottomRight.Y)
-                fill.Color = hp > 0.5 and Color3.fromRGB(0,255,0) or (hp > 0.25 and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,0,0))
-                fill.Thickness = 4
-                table.insert(ESPObjects, fill)
-            end
-        end
-
-        -- Name
-        local name = Drawing.new("Text")
-        name.Position = Vector2.new(sPos.X, sHead.Y - 20)
-        name.Text = plr.Name
-        name.Size = 14
-        name.Color = Color3.fromRGB(255,255,255)
-        name.Center = true
-        name.Outline = true
-        name.OutlineColor = Color3.fromRGB(0,0,0)
-        table.insert(ESPObjects, name)
-
-        -- Tracer
-        if Toggles.Tracers then
-            local tracer = Drawing.new("Line")
-            tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
-            tracer.To = Vector2.new(sPos.X, sPos.Y)
-            tracer.Color = Settings.TracerColor
-            tracer.Thickness = 1
-            table.insert(ESPObjects, tracer)
-        end
-
-        -- Chams
-        if Toggles.Chams then
-            local hl = char:FindFirstChildOfClass("Highlight") or Instance.new("Highlight", char)
-            hl.Enabled = true
-            hl.FillColor = Settings.ChamsColor
-            hl.OutlineTransparency = 0.5
-            table.insert(ESPObjects, hl)
-        end
-    end
-end
-
-task.spawn(function()
-    while task.wait(0.2) do pcall(updateESP) end
-end)
-
--- [ MAIN RENDER ]
 RunService.RenderStepped:Connect(function(dt)
-    -- FOV
-    if Toggles.FOV_Circle then
-        FOVCircle.Visible = true
-        FOVCircle.Radius = Settings.FovRadius
-        FOVCircle.Position = (Settings.FOVPosition == "Center") and FOVCenter or UserInputService:GetMouseLocation()
-    else
-        FOVCircle.Visible = false
+    local best = nil
+    if Features.aimbotEnabled or Features.triggerbotEnabled or Features.wallbangEnabled then
+        best = getBestTarget()
     end
 
-    -- Crosshair
-    Crosshair.Visible = Toggles.Crosshair
-    if Crosshair.Visible then Crosshair.Position = FOVCenter end
+    if Features.aimbotEnabled and best then
+        local canAim = (Features.aimTrigger == "Always") or (Features.aimTrigger == "On Shoot" and isShooting)
+        if canAim then
+            local targetPos = best.Position
+            local currentCF = camera.CFrame
+            local targetCF = CFrame.new(currentCF.Position, targetPos)
+            local smooth = 1 - math.exp(-Features.aimSmoothness * dt * 10)
+            camera.CFrame = currentCF:Lerp(targetCF, smooth)
+        end
+    end
 
-    -- Aimbot (jika AimLock tidak aktif)
-    if Toggles.Aimbot and not Toggles.AimLock then
-        local target = getBestTarget()
-        local isShooting = (Settings.AimMode == "Always") or (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1))
-        if target and isShooting then
-            local targetPos = target.Position
-            if Toggles.Predict then
-                local dist = (Camera.CFrame.Position - targetPos).Magnitude
-                targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+    if Features.triggerbotEnabled and best then
+        local screenPos, onScreen = camera:WorldToViewportPoint(best.Position)
+        if onScreen then
+            local center = camera.ViewportSize / 2
+            local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+            local currentFOV = Features.aggressiveMode and Features.triggerFOV * 1.5 or Features.triggerFOV
+
+            if dist < currentFOV then
+                if Features.triggerHeadshotOnly and best.Part.Name ~= "Head" then
+                    return
+                end
+
+                local now = tick()
+                local effectiveDelay = Features.aggressiveMode and Features.triggerDelay * 0.3 or Features.triggerDelay
+                effectiveDelay = math.max(effectiveDelay, 0.005)
+
+                if now - triggerLastShot >= effectiveDelay then
+                    triggerLastShot = now
+                    local shotsToFire = Features.aggressiveMode and Features.burstShots or 1
+                    for i = 1, shotsToFire do
+                        fireShot(best.Position)
+                        if i < shotsToFire then
+                            local burstWait = Features.aggressiveMode and Features.burstDelay * 0.5 or Features.burstDelay
+                            task.wait(math.max(burstWait, 0.005))
+                        end
+                    end
+                    if Features.aggressiveMode then
+                        triggerLastShot = now - effectiveDelay * 0.5
+                    end
+                end
             end
-            local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * dt * 2))
         end
     end
+end)
 
-    -- Movement
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChildOfClass("Humanoid") then
-        char.Humanoid.WalkSpeed = Settings.WalkSpeed
-        char.Humanoid.JumpPower = Settings.JumpPower
+-- ============================================================
+--  PLAYER MODS LOOP
+-- ============================================================
+task.spawn(function()
+    while true do
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then task.wait(1) return end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then task.wait(1) return end
+
+            if Features.antiRagdoll then
+                hum.PlatformStand = false
+                hum.Sit = false
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then hrp.Velocity = Vector3.new(); hrp.RotVelocity = Vector3.new() end
+            end
+
+            if Features.antiAFK then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(1), 0)
+                    hrp.Velocity = Vector3.new(math.random(-1,1), 0, math.random(-1,1))
+                end
+            end
+
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool then
+                if Features.noRecoil then
+                    for _, prop in ipairs({"Recoil","recoil","Kickback","GunRecoil","Shake","CameraRecoil"}) do
+                        local success, val = pcall(function() return tool[prop] end)
+                        if success and val ~= nil and type(val) == "number" then tool[prop] = 0 end
+                    end
+                    if tool:FindFirstChild("Recoil") and tool.Recoil:IsA("NumberValue") then tool.Recoil.Value = 0 end
+                end
+                if Features.noSpread then
+                    for _, prop in ipairs({"Spread","spread","Accuracy","Inaccuracy","BulletSpread","Deviation"}) do
+                        local success, val = pcall(function() return tool[prop] end)
+                        if success and val ~= nil and type(val) == "number" then tool[prop] = 0 end
+                    end
+                    if tool:FindFirstChild("Spread") and tool.Spread:IsA("NumberValue") then tool.Spread.Value = 0 end
+                    if tool:FindFirstChild("Inaccuracy") and tool.Inaccuracy:IsA("NumberValue") then tool.Inaccuracy.Value = 0 end
+                end
+                for _, child in ipairs(tool:GetDescendants()) do
+                    if child:IsA("NumberValue") or child:IsA("IntValue") or child:IsA("FloatValue") then
+                        local name = child.Name:lower()
+                        if Features.noRecoil and (name:find("recoil") or name:find("kick") or name:find("shake")) then child.Value = 0 end
+                        if Features.noSpread and (name:find("spread") or name:find("inaccuracy") or name:find("accuracy") or name:find("deviation")) then child.Value = 0 end
+                    end
+                end
+            end
+        end)
+        task.wait(0.2)
+    end
+end)
+
+-- ============================================================
+--  ESP DEFAULT (HIGHLIGHT)
+-- ============================================================
+local highlightObjects = {}
+
+local function clearESP()
+    for _, h in pairs(highlightObjects) do
+        pcall(function() h:Destroy() end)
+    end
+    highlightObjects = {}
+end
+
+local function updateESP()
+    if not Features.espEnabled then
+        clearESP()
+        return
     end
 
-    -- Fly controls
-    if Toggles.Fly then
-        if not flyBodyVelocity then toggleFly() end
-        local moveDir = Vector3.new()
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
-        if moveDir.Magnitude > 0 then
-            moveDir = moveDir.Unit * 50
-            if flyBodyVelocity then flyBodyVelocity.Velocity = moveDir end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        local char = player.Character
+        if not char then
+            if highlightObjects[player] then
+                highlightObjects[player]:Destroy()
+                highlightObjects[player] = nil
+            end
+            continue
+        end
+        if not isAlive(char) then
+            if highlightObjects[player] then
+                highlightObjects[player]:Destroy()
+                highlightObjects[player] = nil
+            end
+            continue
+        end
+        if Features.espTeamCheck and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+            if highlightObjects[player] then
+                highlightObjects[player].Enabled = false
+            end
+            continue
+        end
+
+        if not highlightObjects[player] then
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = char
+            highlight.FillColor = Features.espColor
+            highlight.OutlineColor = Features.espColor
+            highlight.FillTransparency = Features.espTransparency
+            highlight.OutlineTransparency = 0.5
+            highlight.Enabled = true
+            highlightObjects[player] = highlight
         else
-            if flyBodyVelocity then flyBodyVelocity.Velocity = Vector3.new(0,0,0) end
+            highlightObjects[player].Parent = char
+            highlightObjects[player].FillColor = Features.espColor
+            highlightObjects[player].FillTransparency = Features.espTransparency
+            highlightObjects[player].Enabled = true
         end
+    end
+
+    for player, obj in pairs(highlightObjects) do
+        if not player.Parent or not Players:FindFirstChild(player.Name) then
+            obj:Destroy()
+            highlightObjects[player] = nil
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    updateESP()
+end)
+Players.PlayerRemoving:Connect(function(player)
+    if highlightObjects[player] then
+        highlightObjects[player]:Destroy()
+        highlightObjects[player] = nil
+    end
+end)
+RunService.RenderStepped:Connect(updateESP)
+
+-- ============================================================
+--  WEAPON MODS (Arsenal)
+-- ============================================================
+local Weapons = ReplicatedStorage:FindFirstChild("Weapons")
+local weaponDefaults = {}
+
+if Weapons then
+    for _, weapon in ipairs(Weapons:GetChildren()) do
+        local data = {}
+        if weapon:FindFirstChild("FireRate") then data.FireRate = weapon.FireRate.Value end
+        if weapon:FindFirstChild("BFireRate") then data.BFireRate = weapon.BFireRate.Value end
+        if weapon:FindFirstChild("ReloadTime") then data.ReloadTime = weapon.ReloadTime.Value end
+        if weapon:FindFirstChild("RecoilControl") then data.RecoilControl = weapon.RecoilControl.Value end
+        if weapon:FindFirstChild("MaxSpread") then data.MaxSpread = weapon.MaxSpread.Value end
+        if weapon:FindFirstChild("SpreadRecovery") then data.SpreadRecovery = weapon.SpreadRecovery.Value end
+        weaponDefaults[weapon.Name] = data
+    end
+end
+
+local function applyWeaponMods()
+    if not Weapons then return end
+    for _, weapon in ipairs(Weapons:GetChildren()) do
+        local defaults = weaponDefaults[weapon.Name]
+        if not defaults then continue end
+
+        if Features.fastFire then
+            if weapon:FindFirstChild("FireRate") then weapon.FireRate.Value = 0.01 end
+            if weapon:FindFirstChild("BFireRate") then weapon.BFireRate.Value = 0.01 end
+        else
+            if weapon:FindFirstChild("FireRate") and defaults.FireRate then weapon.FireRate.Value = defaults.FireRate end
+            if weapon:FindFirstChild("BFireRate") and defaults.BFireRate then weapon.BFireRate.Value = defaults.BFireRate end
+        end
+
+        if Features.fastReload then
+            if weapon:FindFirstChild("ReloadTime") then weapon.ReloadTime.Value = 0.01 end
+        else
+            if weapon:FindFirstChild("ReloadTime") and defaults.ReloadTime then weapon.ReloadTime.Value = defaults.ReloadTime end
+        end
+
+        if Features.arsenalNoRecoil then
+            if weapon:FindFirstChild("RecoilControl") then weapon.RecoilControl.Value = 0 end
+        else
+            if weapon:FindFirstChild("RecoilControl") and defaults.RecoilControl then weapon.RecoilControl.Value = defaults.RecoilControl end
+        end
+
+        if Features.arsenalNoSpread then
+            if weapon:FindFirstChild("MaxSpread") then weapon.MaxSpread.Value = 0.01 end
+            if weapon:FindFirstChild("SpreadRecovery") then weapon.SpreadRecovery.Value = 0.01 end
+        else
+            if weapon:FindFirstChild("MaxSpread") and defaults.MaxSpread then weapon.MaxSpread.Value = defaults.MaxSpread end
+            if weapon:FindFirstChild("SpreadRecovery") and defaults.SpreadRecovery then weapon.SpreadRecovery.Value = defaults.SpreadRecovery end
+        end
+    end
+end
+
+-- ============================================================
+--  FPS & PING STATS
+-- ============================================================
+local statsGui = Instance.new("ScreenGui")
+statsGui.Name = "W424_STATS_GUI"
+statsGui.Parent = CoreGui
+statsGui.ResetOnSpawn = false
+statsGui.IgnoreGuiInset = true
+
+local statsFrame = Instance.new("Frame")
+statsFrame.Size = UDim2.new(0, 140, 0, 28)
+statsFrame.Position = UDim2.new(0, 10, 0, 10)
+statsFrame.BackgroundTransparency = 0.5
+statsFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+statsFrame.Visible = false
+statsFrame.Parent = statsGui
+Instance.new("UICorner", statsFrame).CornerRadius = UDim.new(0, 4)
+
+local statsText = Instance.new("TextLabel")
+statsText.Size = UDim2.new(1, 0, 1, 0)
+statsText.BackgroundTransparency = 1
+statsText.TextColor3 = Color3.fromRGB(0, 255, 100)
+statsText.Font = Enum.Font.GothamBold
+statsText.TextSize = 12
+statsText.Text = " FPS:0  Ping:0ms"
+statsText.Parent = statsFrame
+
+local frameCount = 0
+local timeAcc = 0
+RunService.RenderStepped:Connect(function(dt)
+    if Features.statsEnabled then
+        frameCount = frameCount + 1
+        timeAcc = timeAcc + dt
+        if timeAcc >= 1 then
+            local ping = 0
+            pcall(function() ping = LocalPlayer:GetNetworkPing() * 1000 end)
+            statsText.Text = string.format(" FPS:%d  Ping:%.0fms", frameCount, ping)
+            frameCount = 0
+            timeAcc = 0
+        end
+    end
+end)
+
+-- ============================================================
+--  UI BUILDING
+-- ============================================================
+
+-- ===== TAB MAIN =====
+local TabMain = Window:CreateTab("Main")
+Window:AddParagraph(TabMain, "Player Mods", "Character & weapon tweaks")
+Window:AddToggle(TabMain, "No Recoil (Camera)", "Hilangkan getaran senjata", false, function(s) Features.noRecoil = s end)
+Window:AddToggle(TabMain, "No Spread", "Akurasi sempurna", false, function(s) Features.noSpread = s end)
+Window:AddToggle(TabMain, "Anti Ragdoll", "Cegah jatuh / ragdoll", false, function(s) Features.antiRagdoll = s end)
+Window:AddToggle(TabMain, "Anti AFK", "Gerak otomatis agar tidak di-kick", false, function(s) Features.antiAFK = s end)
+
+Window:AddDivider(TabMain, "Arsenal Mods")
+Window:AddToggle(TabMain, "Infinite Ammo", "Ammo tidak habis", false, function(s)
+    Features.infiniteAmmo = s
+    if s then
+        pcall(function()
+            if ReplicatedStorage:FindFirstChild("wkspc") and ReplicatedStorage.wkspc:FindFirstChild("CurrentCurse") then
+                ReplicatedStorage.wkspc.CurrentCurse.Value = 'Infinite Ammo'
+            end
+        end)
+    end
+end)
+Window:AddToggle(TabMain, "Fast Fire Rate", "Tembak super cepat (Arsenal)", false, function(s)
+    Features.fastFire = s
+    applyWeaponMods()
+end)
+Window:AddToggle(TabMain, "Fast Reload", "Reload hampir instan", false, function(s)
+    Features.fastReload = s
+    applyWeaponMods()
+end)
+Window:AddToggle(TabMain, "No Recoil (Arsenal)", "Set RecoilControl ke 0", false, function(s)
+    Features.arsenalNoRecoil = s
+    applyWeaponMods()
+end)
+Window:AddToggle(TabMain, "No Spread (Arsenal)", "Set MaxSpread & SpreadRecovery", false, function(s)
+    Features.arsenalNoSpread = s
+    applyWeaponMods()
+end)
+
+-- ===== TAB AIM =====
+local TabAim = Window:CreateTab("Aim")
+Window:AddParagraph(TabAim, "Aimbot", "Camera aimbot settings")
+
+Window:AddToggle(TabAim, "Enable Aimbot", "Gerakkan kamera ke target", false, function(s) Features.aimbotEnabled = s end)
+Window:AddDropdown(TabAim, "Trigger", "Kapan aim aktif", {"On Shoot","Always"}, false, "On Shoot", function(v) Features.aimTrigger = v end)
+Window:AddToggle(TabAim, "FOV Circle", "Tampilkan lingkaran FOV", false, function(s) fovFrame.Visible = s end)
+Window:AddSlider(TabAim, "FOV Radius", "30-400", 30, 400, 150, function(v) Features.fovRadius = v; updateFOVSize() end)
+Window:AddSlider(TabAim, "Max Distance", "50-500", 50, 500, 400, function(v) Features.maxAimDistance = v end)
+Window:AddToggle(TabAim, "Anti Team", "Hindari tim sendiri", true, function(s) Features.useTeamCheck = s end)
+Window:AddToggle(TabAim, "Vis Check", "Periksa tembok", true, function(s) Features.useVisibilityCheck = s end)
+Window:AddToggle(TabAim, "Headshot Only", "Hanya Head", false, function(s) Features.headshotOnly = s end)
+Window:AddDropdown(TabAim, "Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","UpperTorso","Torso"}, false, "Head", function(v) Features.targetPart = v end)
+Window:AddSlider(TabAim, "Smoothness", "1-10", 1, 10, 3, function(v) Features.aimSmoothness = v/10 end)
+Window:AddSlider(TabAim, "Hitbox Expansion", "0-5 (perbesar target)", 0, 5, 0, function(v) Features.hitboxExpansion = v end)
+Window:AddDropdown(TabAim, "Target Priority", "FOV or Distance", {"FOV","Distance"}, false, "FOV", function(v) Features.targetPriority = v end)
+
+Window:AddDivider(TabAim, "Silent Aim")
+Window:AddToggle(TabAim, "Enable Silent Aim", "Aim tanpa gerak kamera (hook 'cast')", false, function(s)
+    Features.silentAimEnabled = s
+    if s then setupSilentHook() else removeSilentHook() end
+end)
+Window:AddSlider(TabAim, "Silent FOV", "30-400", 30, 400, 200, function(v) Features.silentAimFOV = v end)
+Window:AddSlider(TabAim, "Silent Distance", "50-500", 50, 500, 400, function(v) Features.silentAimDistance = v end)
+Window:AddDropdown(TabAim, "Silent Target Part", "Bagian tubuh", {"Head","HumanoidRootPart","UpperTorso","Torso"}, false, "Head", function(v) Features.silentAimTargetPart = v end)
+Window:AddToggle(TabAim, "Silent Wallbang", "Tembus tembok", true, function(s) Features.silentAimWallbang = s end)
+Window:AddToggle(TabAim, "Silent Anti Team", "Hindari tim", true, function(s) Features.silentAimTeamCheck = s end)
+
+Window:AddDivider(TabAim, "Wallbang (Camera mode)")
+Window:AddToggle(TabAim, "Enable Wallbang", "Tembus tembok (hook 'cast')", false, function(v)
+    Features.wallbangEnabled = v
+    if v then setupWallbangHook() else removeWallbangHook() end
+end)
+
+Window:AddDivider(TabAim, "Triggerbot (Auto Shoot)")
+Window:AddToggle(TabAim, "Enable Triggerbot", "Tembak otomatis saat crosshair di musuh", false, function(v) Features.triggerbotEnabled = v end)
+Window:AddSlider(TabAim, "Trigger Delay", "0.01-0.5s", 1, 50, 8, function(v) Features.triggerDelay = v/100 end)
+Window:AddSlider(TabAim, "Trigger FOV", "Pixel radius (5-100)", 5, 100, 35, function(v) Features.triggerFOV = v end)
+Window:AddToggle(TabAim, "Trigger Headshot Only", "Hanya tembak jika target Head", false, function(v) Features.triggerHeadshotOnly = v end)
+Window:AddToggle(TabAim, "Aggressive Mode", "Spam tembakan super cepat", false, function(v)
+    Features.aggressiveMode = v
+    if v then
+        Features.triggerDelay = 0.01
+        Features.triggerFOV = math.max(Features.triggerFOV, 40)
+        Window:Notify({Title="Aggressive Mode ON", Description="Spam aktif!", Color=Color3.fromRGB(255,0,0), Delay=2})
     else
-        if flyBodyVelocity then toggleFly() end
-    end
-
-    -- Noclip
-    toggleNoclip()
-end)
-
--- [ ANTI-AFK ]
-LocalPlayer.Idled:Connect(function()
-    if Toggles.AntiAFK then
-        VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
+        Features.triggerDelay = 0.08
+        Window:Notify({Title="Aggressive Mode OFF", Description="Normal", Color=Color3.fromRGB(0,255,0), Delay=2})
     end
 end)
+Window:AddSlider(TabAim, "Burst Shots", "Tembakan per trigger (1-10)", 1, 10, 3, function(v) Features.burstShots = v end)
+Window:AddSlider(TabAim, "Burst Delay", "Jeda antar burst (0.01-0.1s)", 1, 10, 3, function(v) Features.burstDelay = v/100 end)
+Window:AddDropdown(TabAim, "Trigger Method", "Cara mengirim tembakan", {"Remote","MouseClick"}, false, "Remote", function(v) Features.triggerMethod = v end)
+Window:AddToggle(TabAim, "Trigger Debug", "Tampilkan notifikasi saat tembak", false, function(v) Features.triggerDebug = v end)
 
--- [ KEYBINDS ]
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Keybinds.Aimbot then
-        Toggles.Aimbot = not Toggles.Aimbot; Library:Notify({Title="Aimbot", Content=tostring(Toggles.Aimbot), Type="info"}); saveConfig()
-    elseif input.KeyCode == Keybinds.Silent then
-        Toggles.Silent = not Toggles.Silent; Library:Notify({Title="Silent Aim", Content=tostring(Toggles.Silent), Type="info"}); saveConfig()
-    elseif input.KeyCode == Keybinds.ESP then
-        Toggles.ESP_Enabled = not Toggles.ESP_Enabled; Library:Notify({Title="ESP", Content=tostring(Toggles.ESP_Enabled), Type="info"}); saveConfig()
-    elseif input.KeyCode == Keybinds.Triggerbot then
-        Toggles.Triggerbot = not Toggles.Triggerbot; Library:Notify({Title="Triggerbot", Content=tostring(Toggles.Triggerbot), Type="info"}); saveConfig()
-    elseif input.KeyCode == Keybinds.Fly then
-        Toggles.Fly = not Toggles.Fly; Library:Notify({Title="Fly", Content=tostring(Toggles.Fly), Type="info"}); toggleFly(); saveConfig()
-    elseif input.KeyCode == Keybinds.Noclip then
-        Toggles.Noclip = not Toggles.Noclip; Library:Notify({Title="Noclip", Content=tostring(Toggles.Noclip), Type="info"}); toggleNoclip(); saveConfig()
+-- ===== TAB PREDICT =====
+local TabPredict = Window:CreateTab("Predict")
+Window:AddParagraph(TabPredict, "Prediction", "Aim prediction for moving targets")
+
+Window:AddToggle(TabPredict, "Enable Prediction", "Aim ke depan target berdasarkan kecepatan", true, function(s) Features.usePrediction = s end)
+Window:AddSlider(TabPredict, "Prediction Factor", "0-100 (semakin tinggi semakin agresif)", 0, 100, 30, function(v) Features.predictionFactor = v/100 end)
+Window:AddSlider(TabPredict, "Bullet Speed", "500-1500 (simulasi kecepatan peluru)", 500, 1500, 800, function(v) Features.bulletSpeed = v end)
+
+-- ===== TAB VISUAL =====
+local TabVisual = Window:CreateTab("Visual")
+Window:AddParagraph(TabVisual, "ESP Highlight", "Tandai musuh dengan warna")
+Window:AddToggle(TabVisual, "Enable ESP", "Aktifkan Highlight", false, function(s) Features.espEnabled = s; if not s then clearESP() end end)
+Window:AddColorPicker(TabVisual, "ESP Color", "", Color3.fromRGB(255, 0, 0), function(c) Features.espColor = c; updateESP() end)
+Window:AddSlider(TabVisual, "Transparency", "0-10", 0, 10, 3, function(v) Features.espTransparency = v/10; updateESP() end)
+Window:AddToggle(TabVisual, "Team Check", "Sembunyikan tim", true, function(s) Features.espTeamCheck = s; updateESP() end)
+
+Window:AddDivider(TabVisual, "Minimap Optimization")
+Window:AddToggle(TabVisual, "Reduce Map", "Sembunyikan minimap", false, function(s)
+    Features.reduceMap = s
+    applyReduceMap(s)
+end)
+
+Window:AddDivider(TabVisual, "Field of View")
+Window:AddSlider(TabVisual, "FOV (Field of View)", "60-120", 60, 120, 70, function(v) Features.fovValue = v; pcall(function() workspace.CurrentCamera.FieldOfView = v end) end, "FOVSlider", true)
+pcall(function() workspace.CurrentCamera.FieldOfView = 70 end)
+
+Window:AddDivider(TabVisual, "Stats")
+Window:AddToggle(TabVisual, "FPS & Ping", "Tampilkan FPS dan ping", false, function(s) Features.statsEnabled = s; statsFrame.Visible = s end)
+
+-- ===== TAB CONFIG =====
+local TabConfig = Window:CreateTab("Config")
+Window:AddParagraph(TabConfig, "Configuration", "Save & Load settings")
+Window:AddButton(TabConfig, "Save Config", "Simpan setting ke file", function()
+    Window:Save()
+    Window:Notify({Title="Config", Description="Settings saved!", Color=Color3.fromRGB(0,255,0), Delay=2})
+end)
+Window:AddButton(TabConfig, "Load Config", "Muat setting dari file", function()
+    Window:Load()
+    Window:Notify({Title="Config", Description="Settings loaded!", Color=Color3.fromRGB(0,255,0), Delay=2})
+end)
+Window:AddDivider(TabConfig, "Reset")
+Window:AddButton(TabConfig, "Reset All Settings", "Kembalikan semua ke default", function()
+    Window:Reset()
+    Window:Notify({Title="Config", Description="All settings reset!", Color=Color3.fromRGB(255,255,0), Delay=2})
+end)
+Window:AddDivider(TabConfig, "Info")
+Window:AddParagraph(TabConfig, "Version", "W424HUB v5.3")
+Window:AddParagraph(TabConfig, "Features", "Aimbot, Silent Aim, Triggerbot, Wallbang, Prediction (bullet speed), ESP Highlight, Fast Fire, Reload, Reduce Map")
+
+-- ============================================================
+--  DRAGGABLE STATS FRAME
+-- ============================================================
+local dragging = false
+local dragStart, startPos
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local mousePos = input.Position
+        local framePos = statsFrame.AbsolutePosition
+        local frameSize = statsFrame.AbsoluteSize
+        if mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
+           mousePos.Y >= framePos.Y and mousePos.Y <= framePos.Y + frameSize.Y then
+            dragging = true
+            dragStart = input.Position
+            startPos = statsFrame.Position
+        end
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging then
+            local delta = input.Position - dragStart
+            statsFrame.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
+        end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 
 -- ============================================================
--- UI SETUP (Sama seperti sebelumnya, hanya saya singkat di sini)
+--  FINAL INIT
 -- ============================================================
-local Window = Library:CreateWindow({
-    Name = "W424 HUB",
-    BrandSubtitle = "Arsenal ULTIMATE v5.6 - Smart Integrated",
-    Logo = MY_LOGO,
-    ToggleKey = Enum.KeyCode.RightShift,
-    Size = UDim2.fromOffset(800, 650),
-})
-
-local TabCombat = Window:AddTab({ Name = "Combat", Icon = "target" })
-local TabVisual = Window:AddTab({ Name = "Visuals", Icon = "eye" })
-local TabWeapon = Window:AddTab({ Name = "Weapon", Icon = "zap" })
-local TabMovement = Window:AddTab({ Name = "Movement", Icon = "user" })
-local TabUtility = Window:AddTab({ Name = "Utility", Icon = "settings" })
-local TabConfig = Window:AddTab({ Name = "Config", Icon = "save" })
-
--- ... (UI elements sama seperti sebelumnya, tapi dengan callback yang aman)
--- Saya tidak menulis ulang semua UI di sini karena panjang, tetapi di script final sudah lengkap.
-
--- Notifikasi
-Window:Notify({ Title = "W424 HUB", Content = "Arsenal v5.6 Smart Integrated Loaded!", Type = "success" })
+print("✅ W424HUB v5.3 – loaded!")
+Window:Notify({Title="W424HUB v5.3", Description="Reduce Map fixed!", Color=Color3.fromRGB(0,200,50), Delay=3})
