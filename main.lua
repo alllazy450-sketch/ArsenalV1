@@ -1,543 +1,686 @@
 -- ============================================================
---  W43 HUB
+--  W424 HUB | ARSENAL ULTIMATE v5.6 (UI STANDARD)
+--  Mengikuti pola UI Greedy Growers v5.6 – tanpa perubahan struktur
 -- ============================================================
-print("=== W424 HUB  ===")
 
+-- [LOAD UI LIBRARY]
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Naellx/Oxidelib/main/Oxidelib.lua"))()
 if not Library then return warn("Oxidelib gagal dimuat") end
 
-Library:SetTheme("OLED")
+Library:SetTheme("Ocean")  -- Sama dengan Greedy Growers
 
-local MY_LOGO = "rbxassetid://70773874533764" -- logo default
+local MY_LOGO = "rbxassetid://70773874533764"
 
--- ============================================================
---  WINDOW UTAMA (GROWAGARDEN2 STYLE)
--- ============================================================
 local Window = Library:CreateWindow({
     Name = "W424 HUB",
-    BrandSubtitle = "v5.3",
+    BrandSubtitle = "Arsenal ULTIMATE v5.6",
     Logo = MY_LOGO,
     LogoZoom = 1.5,
-    ToggleKey = Enum.KeyCode.F3,
+    ToggleKey = Enum.KeyCode.RightShift,
     ProfileKey = Enum.KeyCode.K,
-    Size = UDim2.fromOffset(720, 500),
+    Size = UDim2.fromOffset(800, 650),
     LoadingText = "W424 HUB",
-    LoadingSubtitle = "Loading v5.3 Final...",
+    LoadingSubtitle = "Loading Arsenal v5.6...",
 })
 
--- Watermark
-task.spawn(function()
-    task.wait(0.5)
-    if Window.Watermark then
-        Window.Watermark.ImageTransparency = 0.4
-    end
-end)
-
--- Mobile Bubble (salin dari growagarden2)
-task.spawn(function()
-    pcall(function()
-        local sg = Window.ScreenGui
-        if not sg then return end
-        
-        local btn = Instance.new("TextButton")
-        btn.Name = "W424MobileBubble"
-        btn.Size = UDim2.new(0, 56, 0, 56)
-        btn.Position = UDim2.new(0.1, 0, 0.4, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-        btn.BackgroundTransparency = 0.1
-        btn.Text = ""
-        btn.ZIndex = 999
-        btn.Parent = sg
-        
-        local corner = Instance.new("UICorner", btn)
-        corner.CornerRadius = UDim.new(0, 16)
-        
-        local stroke = Instance.new("UIStroke", btn)
-        stroke.Color = Color3.fromRGB(167, 200, 244)
-        stroke.Thickness = 1.5
-        
-        local icon = Instance.new("ImageLabel", btn)
-        icon.Size = UDim2.new(0.8, 0, 0.8, 0)
-        icon.Position = UDim2.new(0.1, 0, 0.1, 0)
-        icon.BackgroundTransparency = 1
-        icon.Image = MY_LOGO
-        icon.ScaleType = Enum.ScaleType.Fit
-        icon.ZIndex = 1000
-        
-        btn.MouseButton1Click:Connect(function() Window:ToggleUI() end)
-        
-        local UserInputService = game:GetService("UserInputService")
-        local dragging, dragStart, startPos = false, nil, nil
-        
-        btn.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging, dragStart, startPos = true, input.Position, btn.Position
-            end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                local delta = input.Position - dragStart
-                btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-        end)
-        
-        UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = false
-            end
-        end)
-    end)
-end)
-
 -- ============================================================
---  GLOBAL FEATURES
+--  SERVICES
 -- ============================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
 local StarterGui = game:GetService("StarterGui")
+local Mouse = LocalPlayer:GetMouse()
 
-local Features = {
-    noRecoil = false,
-    noSpread = false,
-    antiRagdoll = false,
-    antiAFK = false,
+-- ============================================================
+--  FUNGSI KONVERSI WARNA (untuk save/load)
+-- ============================================================
+local function color3ToTable(c)
+    return {R = c.R, G = c.G, B = c.B}
+end
+local function tableToColor3(t)
+    return Color3.new(t.R, t.G, t.B)
+end
 
-    aimbotEnabled = false,
-    aimMode = "Always",
-    targetPart = "Head",
-    headshotOnly = true,
-    aimSmoothness = 5,
-    useTeamCheck = true,
-    fovRadius = 70,
-    maxAimDistance = 800,
-    usePrediction = true,
-    predictionFactor = 0.5,
-    bulletSpeed = 1000,
-
-    espEnabled = false,
-    espColor = Color3.fromRGB(255, 0, 0),
-    espTransparency = 0.3,
-    espTeamCheck = true,
-
-    reduceMap = false,
+-- ============================================================
+--  STATE & CONFIG
+-- ============================================================
+local Toggles = {
+    Aimbot = false, Silent = false, WallCheck = true, Predict = true,
+    FOV_Circle = false, InfAmmo = false, NoRecoil = false, NoSpread = false,
+    ESP_Enabled = false, TeamCheck = true, AntiAFK = true,
+    Triggerbot = false, AimLock = false, Fly = false, Noclip = false,
+    AutoJump = false, Tracers = false, BoxESP = false, HealthBar = false,
+    Chams = false, Crosshair = false,
+}
+local Settings = {
+    Smoothness = 3, FovRadius = 150, TargetPart = "Head",
+    BulletSpeed = 950, PredFactor = 0.5, AimMode = "On Shoot",
+    WalkSpeed = 16, JumpPower = 50, FOVPosition = "Center",
+    TriggerbotDelay = 0.1,
+    ChamsColor = Color3.fromRGB(255,0,0),
+    BoxColor = Color3.fromRGB(255,255,255),
+    TracerColor = Color3.fromRGB(0,255,0),
+}
+local Keybinds = {
+    Aimbot = Enum.KeyCode.LeftControl,
+    Silent = Enum.KeyCode.LeftShift,
+    ESP = Enum.KeyCode.F1,
+    Triggerbot = Enum.KeyCode.F2,
+    Fly = Enum.KeyCode.F3,
+    Noclip = Enum.KeyCode.F4,
 }
 
 -- ============================================================
---  FOV CIRCLE
+--  SAVE / LOAD CONFIG (dengan konversi warna)
 -- ============================================================
-local fovGui = Instance.new("ScreenGui", CoreGui)
-fovGui.Name = "W424HUB_FOV"
-fovGui.IgnoreGuiInset = true
-fovGui.DisplayOrder = 999
-
-local fovFrame = Instance.new("Frame", fovGui)
-fovFrame.BackgroundTransparency = 1
-fovFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-fovFrame.Size = UDim2.new(0, Features.fovRadius * 2, 0, Features.fovRadius * 2)
-fovFrame.Visible = false
-
-local fovStroke = Instance.new("UIStroke", fovFrame)
-fovStroke.Color = Color3.fromRGB(255, 255, 255)
-fovStroke.Thickness = 2
-Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1, 0)
-
-RunService.RenderStepped:Connect(function()
-    if fovFrame.Visible then
-        local viewport = camera.ViewportSize
-        fovFrame.Position = UDim2.new(0, viewport.X / 2, 0, viewport.Y / 2)
-    end
-end)
-
--- ============================================================
---  ESP – HIGHLIGHT
--- ============================================================
-local espHighlights = {}
-
-local function clearESP()
-    for _, h in pairs(espHighlights) do
-        if h then h:Destroy() end
-    end
-    espHighlights = {}
+local CONFIG_FILE = "W424_Arsenal_Config.json"
+local function saveConfig()
+    local data = {
+        Toggles = Toggles,
+        Settings = {
+            Smoothness = Settings.Smoothness,
+            FovRadius = Settings.FovRadius,
+            TargetPart = Settings.TargetPart,
+            BulletSpeed = Settings.BulletSpeed,
+            PredFactor = Settings.PredFactor,
+            AimMode = Settings.AimMode,
+            WalkSpeed = Settings.WalkSpeed,
+            JumpPower = Settings.JumpPower,
+            FOVPosition = Settings.FOVPosition,
+            TriggerbotDelay = Settings.TriggerbotDelay,
+            ChamsColor = color3ToTable(Settings.ChamsColor),
+            BoxColor = color3ToTable(Settings.BoxColor),
+            TracerColor = color3ToTable(Settings.TracerColor),
+        },
+        Keybinds = Keybinds,
+    }
+    local json = HttpService:JSONEncode(data)
+    pcall(function() writefile(CONFIG_FILE, json) end)
 end
 
-local function updateESP()
-    if not Features.espEnabled then
-        clearESP()
-        return
+local function loadConfig()
+    if not pcall(function() return readfile(CONFIG_FILE) end) then return end
+    local json = readfile(CONFIG_FILE)
+    local data = HttpService:JSONDecode(json)
+    if data then
+        for k,v in pairs(data.Toggles) do Toggles[k] = v end
+        for k,v in pairs(data.Settings) do
+            if k == "ChamsColor" or k == "BoxColor" or k == "TracerColor" then
+                Settings[k] = tableToColor3(v)
+            else
+                Settings[k] = v
+            end
+        end
+        for k,v in pairs(data.Keybinds) do Keybinds[k] = v end
     end
+end
+loadConfig()
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local char = player.Character
-        if not char or not char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("Humanoid").Health <= 0 then
-            if espHighlights[player] then
-                espHighlights[player]:Destroy()
-                espHighlights[player] = nil
-            end
-            continue
-        end
+-- ============================================================
+--  UI – TAB COMBAT
+-- ============================================================
+local TabCombat = Window:AddTab({ Name = "Combat", Icon = "target" })
 
-        if Features.espTeamCheck and LocalPlayer.Team and player.Team and LocalPlayer.Team == player.Team then
-            if espHighlights[player] then
-                espHighlights[player].Enabled = false
-            end
-            continue
-        end
+-- SubTab: Aimbot
+local SubAim = TabCombat:AddSubTab("Aimbot")
+SubAim:AddSection("MAIN AIMBOT")
+SubAim:AddToggle({ Name = "Enable Aimbot", Default = Toggles.Aimbot, Callback = function(v) Toggles.Aimbot = v; saveConfig() end })
+SubAim:AddToggle({ Name = "Aim Lock (Lock target)", Default = Toggles.AimLock, Callback = function(v) Toggles.AimLock = v; saveConfig() end })
+SubAim:AddDropdown({ Name = "Aim Mode", Options = {"On Shoot", "Always"}, Default = Settings.AimMode, Callback = function(v) Settings.AimMode = v; saveConfig() end })
+SubAim:AddSlider({ Name = "Smoothing", Min = 1, Max = 20, Default = Settings.Smoothness, Callback = function(v) Settings.Smoothness = v; saveConfig() end })
+SubAim:AddDropdown({ Name = "Target Part", Options = {"Head", "HumanoidRootPart", "LowerTorso"}, Default = Settings.TargetPart, Callback = function(v) Settings.TargetPart = v; saveConfig() end })
+SubAim:AddToggle({ Name = "Wall Check", Default = Toggles.WallCheck, Callback = function(v) Toggles.WallCheck = v; saveConfig() end })
 
-        if not espHighlights[player] then
-            local h = Instance.new("Highlight")
-            h.Parent = char
-            h.FillColor = Features.espColor
-            h.OutlineColor = Features.espColor
-            h.FillTransparency = Features.espTransparency
-            h.OutlineTransparency = 0.5
-            h.Enabled = true
-            espHighlights[player] = h
+-- SubTab: Silent Aim
+local SubSilent = TabCombat:AddSubTab("Silent Aim")
+SubSilent:AddSection("SILENT ENGINE")
+SubSilent:AddToggle({ Name = "Enable Silent Aim", Default = Toggles.Silent, Callback = function(v) Toggles.Silent = v; saveConfig() end })
+
+-- SubTab: Prediction
+local SubPred = TabCombat:AddSubTab("Prediction")
+SubPred:AddSection("SMART PREDICT")
+SubPred:AddToggle({ Name = "Enable Prediction", Default = Toggles.Predict, Callback = function(v) Toggles.Predict = v; saveConfig() end })
+SubPred:AddSlider({ Name = "Strength", Min = 1, Max = 200, Default = Settings.PredFactor*100, Callback = function(v) Settings.PredFactor = v/100; saveConfig() end })
+SubPred:AddSlider({ Name = "Bullet Speed", Min = 500, Max = 4000, Default = Settings.BulletSpeed, Callback = function(v) Settings.BulletSpeed = v; saveConfig() end })
+
+-- SubTab: Triggerbot
+local SubTrigger = TabCombat:AddSubTab("Triggerbot")
+SubTrigger:AddSection("AUTO SHOOT")
+SubTrigger:AddToggle({ Name = "Enable Triggerbot", Default = Toggles.Triggerbot, Callback = function(v) Toggles.Triggerbot = v; saveConfig() end })
+SubTrigger:AddSlider({ Name = "Delay (sec)", Min = 0.05, Max = 0.5, Default = Settings.TriggerbotDelay, Callback = function(v) Settings.TriggerbotDelay = v; saveConfig() end })
+
+-- ============================================================
+--  UI – TAB VISUALS
+-- ============================================================
+local TabVisual = Window:AddTab({ Name = "Visuals", Icon = "eye" })
+
+local SubESP = TabVisual:AddSubTab("ESP")
+SubESP:AddSection("ESP SETTINGS")
+SubESP:AddToggle({ Name = "Enable ESP", Default = Toggles.ESP_Enabled, Callback = function(v) Toggles.ESP_Enabled = v; saveConfig() end })
+SubESP:AddToggle({ Name = "Box ESP", Default = Toggles.BoxESP, Callback = function(v) Toggles.BoxESP = v; saveConfig() end })
+SubESP:AddToggle({ Name = "Health Bar", Default = Toggles.HealthBar, Callback = function(v) Toggles.HealthBar = v; saveConfig() end })
+SubESP:AddToggle({ Name = "Tracers", Default = Toggles.Tracers, Callback = function(v) Toggles.Tracers = v; saveConfig() end })
+SubESP:AddToggle({ Name = "Chams (Highlight)", Default = Toggles.Chams, Callback = function(v) Toggles.Chams = v; saveConfig() end })
+SubESP:AddToggle({ Name = "Team Check", Default = Toggles.TeamCheck, Callback = function(v) Toggles.TeamCheck = v; saveConfig() end })
+
+-- Color Picker (dengan penanganan aman)
+SubESP:AddColorPicker({
+    Name = "Box Color",
+    Default = Settings.BoxColor,
+    Callback = function(c)
+        if type(c) == "table" and c.R and c.G and c.B then
+            Settings.BoxColor = Color3.new(c.R, c.G, c.B)
         else
-            espHighlights[player].Parent = char
-            espHighlights[player].Enabled = true
-            espHighlights[player].FillColor = Features.espColor
-            espHighlights[player].FillTransparency = Features.espTransparency
+            Settings.BoxColor = c
         end
+        saveConfig()
     end
-
-    for player, h in pairs(espHighlights) do
-        if not player.Parent or not player.Character or not player.Character:FindFirstChildOfClass("Humanoid") or player.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then
-            h:Destroy()
-            espHighlights[player] = nil
+})
+SubESP:AddColorPicker({
+    Name = "Tracer Color",
+    Default = Settings.TracerColor,
+    Callback = function(c)
+        if type(c) == "table" and c.R and c.G and c.B then
+            Settings.TracerColor = Color3.new(c.R, c.G, c.B)
+        else
+            Settings.TracerColor = c
         end
+        saveConfig()
     end
-end
+})
+SubESP:AddColorPicker({
+    Name = "Chams Color",
+    Default = Settings.ChamsColor,
+    Callback = function(c)
+        if type(c) == "table" and c.R and c.G and c.B then
+            Settings.ChamsColor = Color3.new(c.R, c.G, c.B)
+        else
+            Settings.ChamsColor = c
+        end
+        saveConfig()
+    end
+})
 
-Players.PlayerAdded:Connect(updateESP)
-Players.PlayerRemoving:Connect(function(p)
-    if espHighlights[p] then
-        espHighlights[p]:Destroy()
-        espHighlights[p] = nil
-    end
-end)
+-- SubTab: FOV & Crosshair
+local SubFOV = TabVisual:AddSubTab("FOV & Crosshair")
+SubFOV:AddSection("FOV CIRCLE")
+SubFOV:AddToggle({ Name = "Show FOV Circle", Default = Toggles.FOV_Circle, Callback = function(v) Toggles.FOV_Circle = v; saveConfig() end })
+SubFOV:AddSlider({ Name = "FOV Size", Min = 30, Max = 600, Default = Settings.FovRadius, Callback = function(v) Settings.FovRadius = v; saveConfig() end })
+SubFOV:AddDropdown({ Name = "FOV Position", Options = {"Center", "Mouse"}, Default = Settings.FOVPosition, Callback = function(v) Settings.FOVPosition = v; saveConfig() end })
+SubFOV:AddSection("CROSSHAIR")
+SubFOV:AddToggle({ Name = "Show Crosshair", Default = Toggles.Crosshair, Callback = function(v) Toggles.Crosshair = v; saveConfig() end })
 
 -- ============================================================
---  UTILITIES
+--  UI – TAB WEAPON
 -- ============================================================
-local function applyReduceMap(state)
-    pcall(function() StarterGui:SetCore("MinimapEnabled", not state) end)
-    for _, gui in ipairs(CoreGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and (gui.Name:lower():find("map") or gui.Name:lower():find("hud")) then
-            gui.Enabled = not state
-        end
-    end
-end
+local TabWeapon = Window:AddTab({ Name = "Weapon", Icon = "zap" })
+local SubWeapon = TabWeapon:AddSubTab("Gun Mods")
+SubWeapon:AddSection("AMMO & RECOIL")
+SubWeapon:AddToggle({ Name = "Infinite Ammo", Default = Toggles.InfAmmo, Callback = function(v) Toggles.InfAmmo = v; saveConfig() end })
+SubWeapon:AddToggle({ Name = "No Recoil", Default = Toggles.NoRecoil, Callback = function(v) Toggles.NoRecoil = v; saveConfig() end })
+SubWeapon:AddToggle({ Name = "No Spread", Default = Toggles.NoSpread, Callback = function(v) Toggles.NoSpread = v; saveConfig() end })
 
-local antiAFKConnection
-local function toggleAntiAFK(state)
-    if state then
-        antiAFKConnection = RunService.Heartbeat:Connect(function()
-            if tick() % 30 < 0.1 then
-                UserInputService:SetMouseDelta(Vector2.new(1, 0))
+local SubMap = TabWeapon:AddSubTab("Map/FPS")
+SubMap:AddSection("PERFORMANCE")
+SubMap:AddButton({ Name = "Reduce Map (Potato Mode)", Callback = function()
+    pcall(function()
+        StarterGui:SetCore("MinimapEnabled", false)
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                pcall(function() obj.Material = Enum.Material.SmoothPlastic end)
+            elseif obj:IsA("Texture") or obj:IsA("Decal") then
+                pcall(function() obj:Destroy() end)
             end
-        end)
-    else
-        if antiAFKConnection then
-            antiAFKConnection:Disconnect()
-            antiAFKConnection = nil
         end
-    end
-end
+    end)
+    Window:Notify({ Title = "Map Reduced", Content = "Potato mode activated!", Type = "success" })
+end })
 
+-- ============================================================
+--  UI – TAB MOVEMENT
+-- ============================================================
+local TabMove = Window:AddTab({ Name = "Movement", Icon = "user" })
+local SubMove = TabMove:AddSubTab("Movement")
+SubMove:AddSection("SPEED & JUMP")
+SubMove:AddSlider({ Name = "WalkSpeed", Min = 16, Max = 200, Default = Settings.WalkSpeed, Callback = function(v) Settings.WalkSpeed = v; saveConfig() end })
+SubMove:AddSlider({ Name = "JumpPower", Min = 50, Max = 250, Default = Settings.JumpPower, Callback = function(v) Settings.JumpPower = v; saveConfig() end })
+SubMove:AddToggle({ Name = "Auto Jump", Default = Toggles.AutoJump, Callback = function(v) Toggles.AutoJump = v; saveConfig() end })
+SubMove:AddToggle({ Name = "Fly", Default = Toggles.Fly, Callback = function(v) Toggles.Fly = v; saveConfig() end })
+SubMove:AddToggle({ Name = "Noclip", Default = Toggles.Noclip, Callback = function(v) Toggles.Noclip = v; saveConfig() end })
+SubMove:AddToggle({ Name = "Anti-AFK", Default = Toggles.AntiAFK, Callback = function(v) Toggles.AntiAFK = v; saveConfig() end })
+
+-- ============================================================
+--  UI – TAB UTILITY (Keybinds & Config)
+-- ============================================================
+local TabUtil = Window:AddTab({ Name = "Utility", Icon = "settings" })
+
+local SubKeys = TabUtil:AddSubTab("Keybinds")
+SubKeys:AddSection("SET KEYBINDS")
+SubKeys:AddKeybind({ Name = "Aimbot Toggle", Default = Keybinds.Aimbot, Callback = function(k) Keybinds.Aimbot = k; saveConfig() end })
+SubKeys:AddKeybind({ Name = "Silent Aim Toggle", Default = Keybinds.Silent, Callback = function(k) Keybinds.Silent = k; saveConfig() end })
+SubKeys:AddKeybind({ Name = "ESP Toggle", Default = Keybinds.ESP, Callback = function(k) Keybinds.ESP = k; saveConfig() end })
+SubKeys:AddKeybind({ Name = "Triggerbot Toggle", Default = Keybinds.Triggerbot, Callback = function(k) Keybinds.Triggerbot = k; saveConfig() end })
+SubKeys:AddKeybind({ Name = "Fly Toggle", Default = Keybinds.Fly, Callback = function(k) Keybinds.Fly = k; saveConfig() end })
+SubKeys:AddKeybind({ Name = "Noclip Toggle", Default = Keybinds.Noclip, Callback = function(k) Keybinds.Noclip = k; saveConfig() end })
+
+local SubConfig = TabUtil:AddSubTab("Save/Load")
+SubConfig:AddSection("CONFIGURATION")
+SubConfig:AddButton({ Name = "Save Config", Callback = function() saveConfig(); Window:Notify({ Title = "Config Saved", Content = "Saved to "..CONFIG_FILE, Type = "success" }) end })
+SubConfig:AddButton({ Name = "Load Config", Callback = function() loadConfig(); Window:Notify({ Title = "Config Loaded", Content = "Settings restored!", Type = "success" }) end })
+SubConfig:AddButton({ Name = "Reset Defaults", Callback = function()
+    for k,v in pairs(Toggles) do Toggles[k] = false end
+    Settings.Smoothness = 3; Settings.FovRadius = 150; Settings.TargetPart = "Head"; Settings.BulletSpeed = 950; Settings.PredFactor = 0.5; Settings.AimMode = "On Shoot"; Settings.WalkSpeed = 16; Settings.JumpPower = 50; Settings.FOVPosition = "Center"; Settings.TriggerbotDelay = 0.1; Settings.ChamsColor = Color3.fromRGB(255,0,0); Settings.BoxColor = Color3.fromRGB(255,255,255); Settings.TracerColor = Color3.fromRGB(0,255,0)
+    saveConfig()
+    Window:Notify({ Title = "Defaults Reset", Content = "All settings reset", Type = "warning" })
+end })
+
+-- ============================================================
+--  FUNGSI UTAMA (Aimbot, ESP, dll)
+-- ============================================================
+
+-- [UTILITY]
 local function isAlive(char)
-    if not char then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
 end
 
-local function getTargetPart(char)
-    if Features.headshotOnly then
-        return char:FindFirstChild("Head") or char:FindFirstChild("head")
-    end
-    return char:FindFirstChild(Features.targetPart) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+local function isVisible(part)
+    if not Toggles.WallCheck then return true end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    local res = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
+    return not res or res.Instance:IsDescendantOf(part.Parent)
 end
 
--- ============================================================
---  AIMBOT CORE
--- ============================================================
 local function getBestTarget()
-    local targets = {}
-    local myChar = LocalPlayer.Character
-    if not myChar then return nil end
-    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-    local myPos = myRoot.Position
-    local myTeam = LocalPlayer.Team
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local char = player.Character
-        if not char or not isAlive(char) then continue end
-        if Features.useTeamCheck and myTeam and player.Team == myTeam then continue end
-
-        local part = getTargetPart(char)
-        if not part then continue end
-
-        local targetPos = part.Position
-        local dist = (targetPos - myPos).Magnitude
-        if dist > Features.maxAimDistance then continue end
-
-        local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
-        if not onScreen then continue end
-        
-        local center = camera.ViewportSize / 2
-        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-        if screenDist > Features.fovRadius then continue end
-
-        if Features.usePrediction then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local vel = hrp.Velocity or Vector3.new()
-                local travelTime = dist / Features.bulletSpeed
-                targetPos = targetPos + (vel * travelTime * Features.predictionFactor)
+    local target, dist = nil, Settings.FovRadius
+    local center = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
+            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
+            local part = plr.Character:FindFirstChild(Settings.TargetPart)
+            if part and isVisible(part) then
+                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local mDist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
+                    if mDist < dist then dist = mDist target = part end
+                end
             end
         end
-
-        table.insert(targets, {
-            Player = player,
-            Character = char,
-            Position = targetPos,
-            ScreenDist = screenDist,
-            Distance = dist,
-        })
     end
-
-    table.sort(targets, function(a, b) return a.ScreenDist < b.ScreenDist end)
-    return targets[1]
+    return target
 end
 
--- ============================================================
---  DETEKSI TEMBAKAN
--- ============================================================
-local isShooting = false
+local function getClosestToCrosshair()
+    local center = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
+    local best, bestDist = nil, math.huge
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
+            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
+            local part = plr.Character:FindFirstChild(Settings.TargetPart) or plr.Character:FindFirstChild("HumanoidRootPart")
+            if part and isVisible(part) then
+                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
+                    if dist < bestDist then bestDist = dist best = part end
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- [SILENT AIM]
+local oldMouseHit = nil
+local function silentAimFire()
+    if not Toggles.Silent then return end
+    local target = getBestTarget()
+    if target then
+        local origin = Camera.CFrame.Position
+        local targetPos = target.Position
+        if Toggles.Predict then
+            local dist = (origin - targetPos).Magnitude
+            targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+        end
+        local dir = (targetPos - origin).Unit
+        oldMouseHit = Mouse.Hit
+        Mouse.Hit = CFrame.new(origin + dir * 10, origin + dir * 100)
+        task.spawn(function()
+            task.wait(0.05)
+            if oldMouseHit then Mouse.Hit = oldMouseHit end
+        end)
+    end
+end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        isShooting = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        isShooting = false
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and Toggles.Silent then
+        silentAimFire()
     end
 end)
 
-local function setupTool(tool)
-    if not tool then return end
-    tool.Activated:Connect(function()
-        isShooting = true
-    end)
-    tool.Deactivated:Connect(function()
-        isShooting = false
-    end)
-end
-
-local function onCharacterAdded(char)
-    for _, tool in ipairs(char:GetChildren()) do
-        if tool:IsA("Tool") then
-            setupTool(tool)
-        end
-    end
-    char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            setupTool(child)
-        end
-    end)
-end
-
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
-end
-
--- ============================================================
---  RENDER LOOP
--- ============================================================
-RunService.RenderStepped:Connect(function(dt)
-    pcall(function()
-        -- Aimbot
-        if Features.aimbotEnabled then
-            local best = getBestTarget()
-            if best then
-                local shouldAim = (Features.aimMode == "Always") or (Features.aimMode == "When Shoot" and isShooting)
-                if shouldAim then
-                    local currentCF = camera.CFrame
-                    local targetCF = CFrame.new(currentCF.Position, best.Position)
-                    local alpha = math.clamp(dt * Features.aimSmoothness * 15, 0.01, 1)
-                    camera.CFrame = currentCF:Lerp(targetCF, alpha)
-                end
+-- [NO RECOIL / SPREAD]
+RunService.RenderStepped:Connect(function()
+    if Toggles.NoRecoil or Toggles.NoSpread then
+        local char = LocalPlayer.Character
+        if char then
+            local weapon = char:FindFirstChildOfClass("Tool")
+            if weapon then
+                pcall(function()
+                    if weapon:FindFirstChild("Recoil") then weapon.Recoil.Value = 0 end
+                    if weapon:FindFirstChild("Spread") then weapon.Spread.Value = 0 end
+                    if weapon:FindFirstChild("Accuracy") then weapon.Accuracy.Value = 100 end
+                end)
             end
         end
+    end
+end)
 
-        -- ESP
-        updateESP()
-
-        -- No Recoil / Spread
-        if Features.noRecoil or Features.noSpread then
+-- [INFINITE AMMO]
+task.spawn(function()
+    while task.wait(0.5) do
+        if Toggles.InfAmmo then
             local char = LocalPlayer.Character
             if char then
-                local tool = char:FindFirstChildOfClass("Tool")
-                if tool then
-                    for _, child in ipairs(tool:GetDescendants()) do
-                        if child:IsA("NumberValue") or child:IsA("FloatValue") then
-                            if child.Name:lower():find("recoil") and Features.noRecoil then
-                                child.Value = 0
-                            end
-                            if child.Name:lower():find("spread") and Features.noSpread then
-                                child.Value = 0
-                            end
-                        end
-                    end
+                local weapon = char:FindFirstChildOfClass("Tool")
+                if weapon then
+                    pcall(function()
+                        if weapon:FindFirstChild("Ammo") then weapon.Ammo.Value = weapon.MaxAmmo.Value end
+                        if weapon:FindFirstChild("CurrentAmmo") then weapon.CurrentAmmo.Value = weapon.MaxAmmo.Value end
+                    end)
                 end
             end
         end
+    end
+end)
 
-        -- Anti Ragdoll
+-- [FLY & NOCLIP]
+local flyBodyVelocity = nil
+local function toggleFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if Toggles.Fly then
+        hum.PlatformStand = true
+        flyBodyVelocity = Instance.new("BodyVelocity")
+        flyBodyVelocity.MaxForce = Vector3.new(1e6,1e6,1e6)
+        flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+        flyBodyVelocity.Parent = char:FindFirstChild("HumanoidRootPart")
+    else
+        if flyBodyVelocity then flyBodyVelocity:Destroy() end
+        hum.PlatformStand = false
+    end
+end
+
+local function toggleNoclip()
+    pcall(function()
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.CanCollide = not Toggles.Noclip end
+    end)
+end
+
+-- [AUTO JUMP]
+RunService.Heartbeat:Connect(function()
+    if Toggles.AutoJump then
         local char = LocalPlayer.Character
-        if char and Features.antiRagdoll then
+        if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.PlatformStand = false
-                hum.Sit = false
+            if hum and hum.MoveDirection.Magnitude > 0 and hum.FloorMaterial ~= Enum.Material.Air then
+                hum.Jump = true
             end
         end
+    end
+end)
+
+-- [TRIGGERBOT]
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Toggles.Triggerbot and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        local target = getClosestToCrosshair()
+        if target then
+            local char = LocalPlayer.Character
+            if char then
+                local weapon = char:FindFirstChildOfClass("Tool")
+                if weapon then
+                    weapon:Activate()
+                    task.wait(Settings.TriggerbotDelay)
+                    weapon:Deactivate()
+                end
+            end
+        end
+    end
+end)
+
+-- [AIMLOCK]
+local LockedTarget = nil
+RunService.RenderStepped:Connect(function()
+    if Toggles.AimLock then
+        if not LockedTarget or not isAlive(LockedTarget.Parent) then
+            LockedTarget = getBestTarget()
+        end
+        if LockedTarget then
+            local targetPos = LockedTarget.Position
+            if Toggles.Predict then
+                local dist = (Camera.CFrame.Position - targetPos).Magnitude
+                targetPos = targetPos + (LockedTarget.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+            end
+            local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * 0.1 * 2))
+        end
+    end
+end)
+
+-- [ESP]
+local ESPObjects = {}
+local function updateESP()
+    for _, obj in pairs(ESPObjects) do
+        pcall(function() obj:Destroy() end)
+    end
+    ESPObjects = {}
+    if not Toggles.ESP_Enabled then return end
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local char = plr.Character
+        if not char or not isAlive(char) then continue end
+        local teamCheck = Toggles.TeamCheck and plr.Team == LocalPlayer.Team
+        if teamCheck then continue end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local head = char:FindFirstChild("Head")
+        if not root or not head then continue end
+
+        local sPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if not onScreen then continue end
+        local sHead, _ = Camera:WorldToViewportPoint(head.Position)
+        local height = (sHead.Y - sPos.Y) * 1.5
+        local width = height * 0.5
+        local topLeft = Vector2.new(sPos.X - width/2, sHead.Y)
+        local bottomRight = Vector2.new(sPos.X + width/2, sPos.Y)
+
+        if Toggles.BoxESP then
+            local box = Drawing.new("Square")
+            box.Position = topLeft; box.Size = Vector2.new(width, height)
+            box.Thickness = 1; box.Color = Settings.BoxColor
+            box.Transparency = 0.5; box.Filled = false
+            table.insert(ESPObjects, box)
+        end
+
+        if Toggles.HealthBar then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                local hp = hum.Health / hum.MaxHealth
+                local bg = Drawing.new("Line")
+                bg.From = Vector2.new(topLeft.X - 6, topLeft.Y)
+                bg.To = Vector2.new(topLeft.X - 6, bottomRight.Y)
+                bg.Color = Color3.fromRGB(50,50,50); bg.Thickness = 4
+                table.insert(ESPObjects, bg)
+                local fill = Drawing.new("Line")
+                fill.From = Vector2.new(topLeft.X - 6, bottomRight.Y - (bottomRight.Y - topLeft.Y) * hp)
+                fill.To = Vector2.new(topLeft.X - 6, bottomRight.Y)
+                fill.Color = hp > 0.5 and Color3.fromRGB(0,255,0) or (hp > 0.25 and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,0,0))
+                fill.Thickness = 4
+                table.insert(ESPObjects, fill)
+            end
+        end
+
+        local name = Drawing.new("Text")
+        name.Position = Vector2.new(sPos.X, sHead.Y - 20)
+        name.Text = plr.Name; name.Size = 14
+        name.Color = Color3.fromRGB(255,255,255)
+        name.Center = true; name.Outline = true; name.OutlineColor = Color3.fromRGB(0,0,0)
+        table.insert(ESPObjects, name)
+
+        if Toggles.Tracers then
+            local tracer = Drawing.new("Line")
+            tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+            tracer.To = Vector2.new(sPos.X, sPos.Y)
+            tracer.Color = Settings.TracerColor; tracer.Thickness = 1
+            table.insert(ESPObjects, tracer)
+        end
+
+        if Toggles.Chams then
+            local hl = char:FindFirstChildOfClass("Highlight") or Instance.new("Highlight", char)
+            hl.Enabled = true; hl.FillColor = Settings.ChamsColor
+            hl.OutlineTransparency = 0.5
+            table.insert(ESPObjects, hl)
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.2) do pcall(updateESP) end
+end)
+
+-- [FOV & CROSSHAIR DRAWING]
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(255,255,255)
+FOVCircle.Transparency = 0.7; FOVCircle.NumSides = 64; FOVCircle.Filled = false; FOVCircle.Visible = false
+
+local Crosshair = Drawing.new("Crosshair")
+Crosshair.Color = Color3.fromRGB(255,255,255); Crosshair.Thickness = 1; Crosshair.Size = 10; Crosshair.Visible = false
+
+-- [MAIN RENDER LOOP]
+RunService.RenderStepped:Connect(function(dt)
+    pcall(function()
+        -- FOV
+        if Toggles.FOV_Circle then
+            FOVCircle.Visible = true; FOVCircle.Radius = Settings.FovRadius
+            FOVCircle.Position = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
+        else
+            FOVCircle.Visible = false
+        end
+
+        -- Crosshair
+        Crosshair.Visible = Toggles.Crosshair
+        if Crosshair.Visible then
+            Crosshair.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        end
+
+        -- Aimbot (jika AimLock tidak aktif)
+        if Toggles.Aimbot and not Toggles.AimLock then
+            local target = getBestTarget()
+            local isShooting = (Settings.AimMode == "Always") or (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1))
+            if target and isShooting then
+                local targetPos = target.Position
+                if Toggles.Predict then
+                    local dist = (Camera.CFrame.Position - targetPos).Magnitude
+                    targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+                end
+                local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * dt * 2))
+            end
+        end
+
+        -- Movement (WalkSpeed / JumpPower)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            char.Humanoid.WalkSpeed = Settings.WalkSpeed
+            char.Humanoid.JumpPower = Settings.JumpPower
+        end
+
+        -- Fly
+        if Toggles.Fly then
+            if not flyBodyVelocity then toggleFly() end
+            local moveDir = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
+            if moveDir.Magnitude > 0 then
+                moveDir = moveDir.Unit * 50
+                if flyBodyVelocity then flyBodyVelocity.Velocity = moveDir end
+            else
+                if flyBodyVelocity then flyBodyVelocity.Velocity = Vector3.new(0,0,0) end
+            end
+        else
+            if flyBodyVelocity then toggleFly() end
+        end
+
+        -- Noclip
+        toggleNoclip()
     end)
 end)
 
--- ============================================================
---  UI TABS 
--- ============================================================
-
--- TAB 1: MAIN (Player Tweaks)
-local TabMain = Window:AddTab({ Name = "Main", Icon = "home" })
-local SubPlayer = TabMain:AddSubTab("Player Tweaks")
-
-SubPlayer:AddSection("Player Tweaks")
-SubPlayer:AddToggle({ Name = "No Recoil", Default = false, Callback = function(v) Features.noRecoil = v end })
-SubPlayer:AddToggle({ Name = "No Spread", Default = false, Callback = function(v) Features.noSpread = v end })
-SubPlayer:AddToggle({ Name = "Anti Ragdoll", Default = false, Callback = function(v) Features.antiRagdoll = v end })
-SubPlayer:AddToggle({ Name = "Anti AFK", Default = false, Callback = function(v) Features.antiAFK = v; toggleAntiAFK(v) end })
-
--- TAB 2: AIM (Aggressive Aimbot)
-local TabAim = Window:AddTab({ Name = "Aim", Icon = "target" })
-local SubAim = TabAim:AddSubTab("Aggressive Aimbot")
-
-SubAim:AddSection("Aimbot Settings")
-SubAim:AddToggle({ Name = "Enable Aimbot", Default = false, Callback = function(v) Features.aimbotEnabled = v end })
-SubAim:AddDropdown({
-    Name = "Aim Mode",
-    Options = {"Always", "When Shoot"},
-    Default = "Always",
-    Callback = function(v) Features.aimMode = v end
-})
-SubAim:AddToggle({ Name = "FOV Circle", Default = false, Callback = function(v) fovFrame.Visible = v end })
-SubAim:AddSlider({
-    Name = "FOV Radius",
-    Min = 30,
-    Max = 300,
-    Default = 70,
-    Callback = function(v) 
-        Features.fovRadius = v 
-        fovFrame.Size = UDim2.new(0, v * 2, 0, v * 2)
+-- [ANTI-AFK]
+LocalPlayer.Idled:Connect(function()
+    if Toggles.AntiAFK then
+        VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
     end
-})
-SubAim:AddSlider({ Name = "Max Distance", Min = 100, Max = 2000, Default = 800, Callback = function(v) Features.maxAimDistance = v end })
-SubAim:AddToggle({ Name = "Headshot Only", Default = true, Callback = function(v) Features.headshotOnly = v end })
-SubAim:AddToggle({ Name = "Team Check", Default = true, Callback = function(v) Features.useTeamCheck = v end })
-SubAim:AddSlider({ Name = "Aim Smoothness", Min = 1, Max = 10, Default = 5, Callback = function(v) Features.aimSmoothness = v end })
-SubAim:AddDropdown({
-    Name = "Target Part",
-    Options = {"Head", "HumanoidRootPart", "Torso"},
-    Default = "Head",
-    Callback = function(v) Features.targetPart = v end
-})
+end)
 
--- TAB 3: PREDICT (Prediction Settings)
-local TabPredict = Window:AddTab({ Name = "Predict", Icon = "chart" })
-local SubPred = TabPredict:AddSubTab("Prediction Settings")
-
-SubPred:AddSection("Prediction")
-SubPred:AddToggle({ Name = "Enable Prediction", Default = true, Callback = function(v) Features.usePrediction = v end })
-SubPred:AddSlider({ Name = "Prediction Factor", Min = 0, Max = 100, Default = 50, Callback = function(v) Features.predictionFactor = v/100 end })
-SubPred:AddSlider({ Name = "Bullet Speed", Min = 200, Max = 2000, Default = 1000, Callback = function(v) Features.bulletSpeed = v end })
-
--- TAB 4: VISUAL (ESP & Map)
-local TabVisual = Window:AddTab({ Name = "Visual", Icon = "eye" })
-local SubVisual = TabVisual:AddSubTab("ESP & Map")
-
-SubVisual:AddSection("ESP Highlight")
-SubVisual:AddToggle({ Name = "Enable ESP Highlight", Default = false, Callback = function(v) 
-    Features.espEnabled = v 
-    if not v then clearESP() end
-end })
-SubVisual:AddColorPicker({
-    Name = "ESP Color",
-    Default = Color3.fromRGB(255, 0, 0),
-    Callback = function(c) 
-        Features.espColor = c 
-        for _, h in pairs(espHighlights) do
-            if h then h.FillColor = c; h.OutlineColor = c end
-        end
+-- [KEYBINDS]
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Keybinds.Aimbot then
+        Toggles.Aimbot = not Toggles.Aimbot
+        Window:Notify({Title="Aimbot", Content=tostring(Toggles.Aimbot), Type="info"})
+        saveConfig()
+    elseif input.KeyCode == Keybinds.Silent then
+        Toggles.Silent = not Toggles.Silent
+        Window:Notify({Title="Silent Aim", Content=tostring(Toggles.Silent), Type="info"})
+        saveConfig()
+    elseif input.KeyCode == Keybinds.ESP then
+        Toggles.ESP_Enabled = not Toggles.ESP_Enabled
+        Window:Notify({Title="ESP", Content=tostring(Toggles.ESP_Enabled), Type="info"})
+        saveConfig()
+    elseif input.KeyCode == Keybinds.Triggerbot then
+        Toggles.Triggerbot = not Toggles.Triggerbot
+        Window:Notify({Title="Triggerbot", Content=tostring(Toggles.Triggerbot), Type="info"})
+        saveConfig()
+    elseif input.KeyCode == Keybinds.Fly then
+        Toggles.Fly = not Toggles.Fly
+        Window:Notify({Title="Fly", Content=tostring(Toggles.Fly), Type="info"})
+        toggleFly()
+        saveConfig()
+    elseif input.KeyCode == Keybinds.Noclip then
+        Toggles.Noclip = not Toggles.Noclip
+        Window:Notify({Title="Noclip", Content=tostring(Toggles.Noclip), Type="info"})
+        toggleNoclip()
+        saveConfig()
     end
-})
-SubVisual:AddSlider({
-    Name = "ESP Transparency",
-    Min = 0,
-    Max = 10,
-    Default = 3,
-    Callback = function(v) 
-        Features.espTransparency = v/10
-        for _, h in pairs(espHighlights) do
-            if h then h.FillTransparency = Features.espTransparency end
-        end
-    end
-})
-SubVisual:AddToggle({ Name = "Team Check (ESP)", Default = true, Callback = function(v) 
-    Features.espTeamCheck = v 
-    if Features.espEnabled then updateESP() end
-end })
-
-SubVisual:AddSection("Map & Camera")
-SubVisual:AddToggle({ Name = "Reduce Map", Default = false, Callback = function(v) Features.reduceMap = v; applyReduceMap(v) end })
-SubVisual:AddSlider({ Name = "Camera FOV", Min = 60, Max = 120, Default = 70, Callback = function(v) camera.FieldOfView = v end })
-
--- TAB 5: CONFIG (Save/Load)
-local TabConfig = Window:AddTab({ Name = "Config", Icon = "gear" })
-local SubConfig = TabConfig:AddSubTab("Manager")
-
-SubConfig:AddSection("Configuration")
-SubConfig:AddButton({ Name = "Save Config", Callback = function()
-    Window:SaveConfig()
-    Window:Notify({ Title = "W424HUB HUB", Content = "Settings saved!", Type = "success", Duration = 2 })
-end })
-SubConfig:AddButton({ Name = "Load Config", Callback = function()
-    Window:LoadConfig()
-    Window:Notify({ Title = "W424 HUB", Content = "Settings loaded!", Type = "success", Duration = 2 })
-end })
+end)
 
 -- ============================================================
 --  NOTIFIKASI AWAL
 -- ============================================================
 Window:Notify({
-    Title = "W424HUB",
-    Content = "ESP Highlight & Aimbot When Shoot fixed!",
+    Title = "W424 HUB",
+    Content = "Arsenal ULTIMATE v5.6 (UI Standard) Loaded!",
     Type = "success",
     Duration = 4
 })
 
-print("✅ W424HUB – LET'S KILL!!!")
+print("✅ W424 HUB – Arsenal ULTIMATE v5.6 loaded!")
