@@ -1,13 +1,15 @@
 -- ============================================================
---  W424 HUB | ARSENAL ULTIMATE v5.6 (UI STANDARD)
---  Mengikuti pola UI Greedy Growers v5.6 – tanpa perubahan struktur
+--  W424 HUB | ARSENAL ULTIMATE v5.6 (SEDERHANA & LENGKAP)
+--  Aimbot: 1 toggle + 2 mode (Always / On Shoot) dengan FOV
+--  FOV Circle: muncul & radius bisa diatur (range aimbot)
+--  Fitur: BunnyHop, InstantReload, RapidFire, HitSound, dll.
 -- ============================================================
 
 -- [LOAD UI LIBRARY]
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Naellx/Oxidelib/main/Oxidelib.lua"))()
 if not Library then return warn("Oxidelib gagal dimuat") end
 
-Library:SetTheme("Ocean")  -- Sama dengan Greedy Growers
+Library:SetTheme("Ocean")
 
 local MY_LOGO = "rbxassetid://70773874533764"
 
@@ -38,7 +40,7 @@ local StarterGui = game:GetService("StarterGui")
 local Mouse = LocalPlayer:GetMouse()
 
 -- ============================================================
---  FUNGSI KONVERSI WARNA (untuk save/load)
+--  FUNGSI KONVERSI WARNA
 -- ============================================================
 local function color3ToTable(c)
     return {R = c.R, G = c.G, B = c.B}
@@ -51,21 +53,50 @@ end
 --  STATE & CONFIG
 -- ============================================================
 local Toggles = {
-    Aimbot = false, Silent = false, WallCheck = true, Predict = true,
-    FOV_Circle = false, InfAmmo = false, NoRecoil = false, NoSpread = false,
-    ESP_Enabled = false, TeamCheck = true, AntiAFK = true,
-    Triggerbot = false, AimLock = false, Fly = false, Noclip = false,
-    AutoJump = false, Tracers = false, BoxESP = false, HealthBar = false,
-    Chams = false, Crosshair = false,
+    Aimbot = false,
+    Silent = false,
+    WallCheck = true,
+    Predict = true,
+    GravityPred = false,
+    FOV_Circle = false,
+    InfAmmo = false,
+    NoRecoil = false,
+    NoSpread = false,
+    ESP_Enabled = false,
+    TeamCheck = true,
+    AntiAFK = true,
+    Triggerbot = false,
+    Fly = false,
+    Noclip = false,
+    AutoJump = false,
+    Tracers = false,
+    BoxESP = false,
+    HealthBar = false,
+    Chams = false,
+    Crosshair = false,
+    TriggerbotAuto = false,
+    BunnyHop = false,
+    InstantReload = false,
+    RapidFire = false,
+    HitSound = false,
 }
 local Settings = {
-    Smoothness = 3, FovRadius = 150, TargetPart = "Head",
-    BulletSpeed = 950, PredFactor = 0.5, AimMode = "On Shoot",
-    WalkSpeed = 16, JumpPower = 50, FOVPosition = "Center",
+    Smoothness = 3,
+    FovRadius = 150,
+    TargetPart = "Head",
+    BulletSpeed = 950,
+    PredFactor = 0.5,
+    AimMode = "On Shoot",  -- "Always" or "On Shoot"
+    WalkSpeed = 16,
+    JumpPower = 50,
+    FOVPosition = "Center",
     TriggerbotDelay = 0.1,
     ChamsColor = Color3.fromRGB(255,0,0),
     BoxColor = Color3.fromRGB(255,255,255),
     TracerColor = Color3.fromRGB(0,255,0),
+    FlySpeed = 50,
+    RapidFireDelay = 0.05,
+    HitSoundVolume = 0.5,
 }
 local Keybinds = {
     Aimbot = Enum.KeyCode.LeftControl,
@@ -77,7 +108,7 @@ local Keybinds = {
 }
 
 -- ============================================================
---  SAVE / LOAD CONFIG (dengan konversi warna)
+--  SAVE / LOAD CONFIG
 -- ============================================================
 local CONFIG_FILE = "W424_Arsenal_Config.json"
 local function saveConfig()
@@ -97,6 +128,9 @@ local function saveConfig()
             ChamsColor = color3ToTable(Settings.ChamsColor),
             BoxColor = color3ToTable(Settings.BoxColor),
             TracerColor = color3ToTable(Settings.TracerColor),
+            FlySpeed = Settings.FlySpeed,
+            RapidFireDelay = Settings.RapidFireDelay,
+            HitSoundVolume = Settings.HitSoundVolume,
         },
         Keybinds = Keybinds,
     }
@@ -127,15 +161,15 @@ loadConfig()
 -- ============================================================
 local TabCombat = Window:AddTab({ Name = "Combat", Icon = "target" })
 
--- SubTab: Aimbot
+-- SubTab: Aimbot (sederhana, 1 toggle + mode + FOV)
 local SubAim = TabCombat:AddSubTab("Aimbot")
 SubAim:AddSection("MAIN AIMBOT")
 SubAim:AddToggle({ Name = "Enable Aimbot", Default = Toggles.Aimbot, Callback = function(v) Toggles.Aimbot = v; saveConfig() end })
-SubAim:AddToggle({ Name = "Aim Lock (Lock target)", Default = Toggles.AimLock, Callback = function(v) Toggles.AimLock = v; saveConfig() end })
 SubAim:AddDropdown({ Name = "Aim Mode", Options = {"On Shoot", "Always"}, Default = Settings.AimMode, Callback = function(v) Settings.AimMode = v; saveConfig() end })
 SubAim:AddSlider({ Name = "Smoothing", Min = 1, Max = 20, Default = Settings.Smoothness, Callback = function(v) Settings.Smoothness = v; saveConfig() end })
 SubAim:AddDropdown({ Name = "Target Part", Options = {"Head", "HumanoidRootPart", "LowerTorso"}, Default = Settings.TargetPart, Callback = function(v) Settings.TargetPart = v; saveConfig() end })
 SubAim:AddToggle({ Name = "Wall Check", Default = Toggles.WallCheck, Callback = function(v) Toggles.WallCheck = v; saveConfig() end })
+SubAim:AddSlider({ Name = "FOV Radius (range)", Min = 30, Max = 600, Default = Settings.FovRadius, Callback = function(v) Settings.FovRadius = v; saveConfig() end })
 
 -- SubTab: Silent Aim
 local SubSilent = TabCombat:AddSubTab("Silent Aim")
@@ -146,6 +180,7 @@ SubSilent:AddToggle({ Name = "Enable Silent Aim", Default = Toggles.Silent, Call
 local SubPred = TabCombat:AddSubTab("Prediction")
 SubPred:AddSection("SMART PREDICT")
 SubPred:AddToggle({ Name = "Enable Prediction", Default = Toggles.Predict, Callback = function(v) Toggles.Predict = v; saveConfig() end })
+SubPred:AddToggle({ Name = "Gravity Prediction", Default = Toggles.GravityPred, Callback = function(v) Toggles.GravityPred = v; saveConfig() end })
 SubPred:AddSlider({ Name = "Strength", Min = 1, Max = 200, Default = Settings.PredFactor*100, Callback = function(v) Settings.PredFactor = v/100; saveConfig() end })
 SubPred:AddSlider({ Name = "Bullet Speed", Min = 500, Max = 4000, Default = Settings.BulletSpeed, Callback = function(v) Settings.BulletSpeed = v; saveConfig() end })
 
@@ -153,6 +188,7 @@ SubPred:AddSlider({ Name = "Bullet Speed", Min = 500, Max = 4000, Default = Sett
 local SubTrigger = TabCombat:AddSubTab("Triggerbot")
 SubTrigger:AddSection("AUTO SHOOT")
 SubTrigger:AddToggle({ Name = "Enable Triggerbot", Default = Toggles.Triggerbot, Callback = function(v) Toggles.Triggerbot = v; saveConfig() end })
+SubTrigger:AddToggle({ Name = "Auto Mode (hold/toggle)", Default = Toggles.TriggerbotAuto, Callback = function(v) Toggles.TriggerbotAuto = v; saveConfig() end })
 SubTrigger:AddSlider({ Name = "Delay (sec)", Min = 0.05, Max = 0.5, Default = Settings.TriggerbotDelay, Callback = function(v) Settings.TriggerbotDelay = v; saveConfig() end })
 
 -- ============================================================
@@ -169,7 +205,6 @@ SubESP:AddToggle({ Name = "Tracers", Default = Toggles.Tracers, Callback = funct
 SubESP:AddToggle({ Name = "Chams (Highlight)", Default = Toggles.Chams, Callback = function(v) Toggles.Chams = v; saveConfig() end })
 SubESP:AddToggle({ Name = "Team Check", Default = Toggles.TeamCheck, Callback = function(v) Toggles.TeamCheck = v; saveConfig() end })
 
--- Color Picker (dengan penanganan aman)
 SubESP:AddColorPicker({
     Name = "Box Color",
     Default = Settings.BoxColor,
@@ -225,6 +260,9 @@ SubWeapon:AddSection("AMMO & RECOIL")
 SubWeapon:AddToggle({ Name = "Infinite Ammo", Default = Toggles.InfAmmo, Callback = function(v) Toggles.InfAmmo = v; saveConfig() end })
 SubWeapon:AddToggle({ Name = "No Recoil", Default = Toggles.NoRecoil, Callback = function(v) Toggles.NoRecoil = v; saveConfig() end })
 SubWeapon:AddToggle({ Name = "No Spread", Default = Toggles.NoSpread, Callback = function(v) Toggles.NoSpread = v; saveConfig() end })
+SubWeapon:AddToggle({ Name = "Instant Reload", Default = Toggles.InstantReload, Callback = function(v) Toggles.InstantReload = v; saveConfig() end })
+SubWeapon:AddToggle({ Name = "Rapid Fire", Default = Toggles.RapidFire, Callback = function(v) Toggles.RapidFire = v; saveConfig() end })
+SubWeapon:AddSlider({ Name = "Rapid Fire Delay (sec)", Min = 0.01, Max = 0.2, Decimal = 2, Default = Settings.RapidFireDelay, Callback = function(v) Settings.RapidFireDelay = v; saveConfig() end })
 
 local SubMap = TabWeapon:AddSubTab("Map/FPS")
 SubMap:AddSection("PERFORMANCE")
@@ -251,12 +289,14 @@ SubMove:AddSection("SPEED & JUMP")
 SubMove:AddSlider({ Name = "WalkSpeed", Min = 16, Max = 200, Default = Settings.WalkSpeed, Callback = function(v) Settings.WalkSpeed = v; saveConfig() end })
 SubMove:AddSlider({ Name = "JumpPower", Min = 50, Max = 250, Default = Settings.JumpPower, Callback = function(v) Settings.JumpPower = v; saveConfig() end })
 SubMove:AddToggle({ Name = "Auto Jump", Default = Toggles.AutoJump, Callback = function(v) Toggles.AutoJump = v; saveConfig() end })
+SubMove:AddToggle({ Name = "Bunny Hop", Default = Toggles.BunnyHop, Callback = function(v) Toggles.BunnyHop = v; saveConfig() end })
 SubMove:AddToggle({ Name = "Fly", Default = Toggles.Fly, Callback = function(v) Toggles.Fly = v; saveConfig() end })
+SubMove:AddSlider({ Name = "Fly Speed", Min = 10, Max = 200, Default = Settings.FlySpeed, Callback = function(v) Settings.FlySpeed = v; saveConfig() end })
 SubMove:AddToggle({ Name = "Noclip", Default = Toggles.Noclip, Callback = function(v) Toggles.Noclip = v; saveConfig() end })
 SubMove:AddToggle({ Name = "Anti-AFK", Default = Toggles.AntiAFK, Callback = function(v) Toggles.AntiAFK = v; saveConfig() end })
 
 -- ============================================================
---  UI – TAB UTILITY (Keybinds & Config)
+--  UI – TAB UTILITY
 -- ============================================================
 local TabUtil = Window:AddTab({ Name = "Utility", Icon = "settings" })
 
@@ -275,98 +315,169 @@ SubConfig:AddButton({ Name = "Save Config", Callback = function() saveConfig(); 
 SubConfig:AddButton({ Name = "Load Config", Callback = function() loadConfig(); Window:Notify({ Title = "Config Loaded", Content = "Settings restored!", Type = "success" }) end })
 SubConfig:AddButton({ Name = "Reset Defaults", Callback = function()
     for k,v in pairs(Toggles) do Toggles[k] = false end
-    Settings.Smoothness = 3; Settings.FovRadius = 150; Settings.TargetPart = "Head"; Settings.BulletSpeed = 950; Settings.PredFactor = 0.5; Settings.AimMode = "On Shoot"; Settings.WalkSpeed = 16; Settings.JumpPower = 50; Settings.FOVPosition = "Center"; Settings.TriggerbotDelay = 0.1; Settings.ChamsColor = Color3.fromRGB(255,0,0); Settings.BoxColor = Color3.fromRGB(255,255,255); Settings.TracerColor = Color3.fromRGB(0,255,0)
+    Settings.Smoothness = 3; Settings.FovRadius = 150; Settings.TargetPart = "Head"; Settings.BulletSpeed = 950; Settings.PredFactor = 0.5; Settings.AimMode = "On Shoot"; Settings.WalkSpeed = 16; Settings.JumpPower = 50; Settings.FOVPosition = "Center"; Settings.TriggerbotDelay = 0.1; Settings.ChamsColor = Color3.fromRGB(255,0,0); Settings.BoxColor = Color3.fromRGB(255,255,255); Settings.TracerColor = Color3.fromRGB(0,255,0); Settings.FlySpeed = 50; Settings.RapidFireDelay = 0.05; Settings.HitSoundVolume = 0.5
     saveConfig()
     Window:Notify({ Title = "Defaults Reset", Content = "All settings reset", Type = "warning" })
 end })
 
+-- SubTab: Sounds
+local SubSound = TabUtil:AddSubTab("Sounds")
+SubSound:AddSection("HIT SOUND")
+SubSound:AddToggle({ Name = "Enable Hit Sound", Default = Toggles.HitSound, Callback = function(v) Toggles.HitSound = v; saveConfig() end })
+SubSound:AddSlider({ Name = "Volume", Min = 0, Max = 1, Default = Settings.HitSoundVolume, Callback = function(v) Settings.HitSoundVolume = v; saveConfig() end })
+
 -- ============================================================
---  FUNGSI UTAMA (Aimbot, ESP, dll)
+--  FUNGSI UTAMA
 -- ============================================================
 
--- [UTILITY]
 local function isAlive(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
 end
 
-local function isVisible(part)
+-- WALLCHECK MULTI-POINT
+local function isVisible(character)
     if not Toggles.WallCheck then return true end
+    if not character then return false end
+
+    local parts = {
+        character:FindFirstChild("Head"),
+        character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart"),
+        character:FindFirstChild("LowerTorso")
+    }
+    local origin = Camera.CFrame.Position
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-    local res = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
-    return not res or res.Instance:IsDescendantOf(part.Parent)
+
+    for _, part in ipairs(parts) do
+        if part then
+            local ray = workspace:Raycast(origin, (part.Position - origin), params)
+            if not ray then
+                return true
+            end
+        end
+    end
+    return false
 end
 
+-- PEMILIHAN TARGET (berdasarkan FOV radius)
 local function getBestTarget()
-    local target, dist = nil, Settings.FovRadius
-    local center = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
+    local center = (Settings.FOVPosition == "Center") 
+        and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) 
+        or UserInputService:GetMouseLocation()
+    
+    local bestTarget = nil
+    local bestScore = math.huge
+    local maxDist = 5000
+
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
-            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
-            local part = plr.Character:FindFirstChild(Settings.TargetPart)
-            if part and isVisible(part) then
-                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local mDist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
-                    if mDist < dist then dist = mDist target = part end
-                end
-            end
+        if plr == LocalPlayer then continue end
+        if not plr.Character or not isAlive(plr.Character) then continue end
+
+        if Toggles.TeamCheck and plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+            continue
+        end
+
+        local root = plr.Character:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+        if not isVisible(plr.Character) then continue end
+
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if not onScreen then continue end
+
+        local fovDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+        if fovDist > Settings.FovRadius then continue end  -- range sesuai FOV
+
+        local worldDist = (root.Position - Camera.CFrame.Position).Magnitude
+        if worldDist > maxDist then continue end
+
+        local score = (fovDist / Settings.FovRadius) + (worldDist / maxDist)
+        if score < bestScore then
+            bestScore = score
+            bestTarget = root
         end
     end
-    return target
+    return bestTarget
 end
 
-local function getClosestToCrosshair()
-    local center = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
-    local best, bestDist = nil, math.huge
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
-            if Toggles.TeamCheck and plr.Team == LocalPlayer.Team then continue end
-            local part = plr.Character:FindFirstChild(Settings.TargetPart) or plr.Character:FindFirstChild("HumanoidRootPart")
-            if part and isVisible(part) then
-                local sPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local dist = (Vector2.new(sPos.X, sPos.Y) - center).Magnitude
-                    if dist < bestDist then bestDist = dist best = part end
-                end
-            end
+-- PREDICTION
+local function getBulletSpeed()
+    local char = LocalPlayer.Character
+    if not char then return Settings.BulletSpeed end
+    local weapon = char:FindFirstChildOfClass("Tool")
+    if weapon then
+        local prop = weapon:FindFirstChild("BulletSpeed") or weapon:FindFirstChild("ProjectileSpeed") or weapon:FindFirstChild("Speed")
+        if prop and type(prop.Value) == "number" and prop.Value > 0 then
+            return prop.Value
         end
     end
-    return best
+    return Settings.BulletSpeed
 end
 
--- [SILENT AIM]
-local oldMouseHit = nil
-local function silentAimFire()
+local function predictPosition(targetPart)
+    if not Toggles.Predict then return targetPart.Position end
+
+    local origin = Camera.CFrame.Position
+    local targetPos = targetPart.Position
+    local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
+    local bulletSpeed = getBulletSpeed()
+    local dist = (origin - targetPos).Magnitude
+    local timeToHit = dist / (bulletSpeed + 0.001)
+
+    local predicted = targetPos + velocity * timeToHit * Settings.PredFactor
+
+    if Toggles.GravityPred then
+        local grav = workspace.Gravity * 0.5 * timeToHit^2
+        predicted = predicted + Vector3.new(0, -grav, 0)
+    end
+    return predicted
+end
+
+-- ============================================================
+--  SILENT AIM (via remote)
+-- ============================================================
+local function silentFire()
     if not Toggles.Silent then return end
     local target = getBestTarget()
-    if target then
-        local origin = Camera.CFrame.Position
-        local targetPos = target.Position
-        if Toggles.Predict then
-            local dist = (origin - targetPos).Magnitude
-            targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+    if not target then return end
+
+    local origin = Camera.CFrame.Position
+    local targetPos = predictPosition(target)
+    local direction = (targetPos - origin).Unit
+
+    local char = LocalPlayer.Character
+    if char then
+        local weapon = char:FindFirstChildOfClass("Tool")
+        if weapon then
+            local remote = ReplicatedStorage:FindFirstChild("Fire") or ReplicatedStorage:FindFirstChild("Shoot")
+            if remote and remote:IsA("RemoteEvent") then
+                remote:FireServer(direction)
+                return
+            end
         end
-        local dir = (targetPos - origin).Unit
-        oldMouseHit = Mouse.Hit
-        Mouse.Hit = CFrame.new(origin + dir * 10, origin + dir * 100)
-        task.spawn(function()
-            task.wait(0.05)
-            if oldMouseHit then Mouse.Hit = oldMouseHit end
-        end)
     end
+
+    -- fallback
+    local oldCF = Camera.CFrame
+    local newCF = CFrame.new(origin, origin + direction * 100)
+    Camera.CFrame = newCF
+    task.wait(0.02)
+    Camera.CFrame = oldCF
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and Toggles.Silent then
-        silentAimFire()
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if Toggles.Silent then
+            silentFire()
+        end
     end
 end)
 
--- [NO RECOIL / SPREAD]
+-- ============================================================
+--  NO RECOIL / SPREAD
+-- ============================================================
 RunService.RenderStepped:Connect(function()
     if Toggles.NoRecoil or Toggles.NoSpread then
         local char = LocalPlayer.Character
@@ -374,16 +485,22 @@ RunService.RenderStepped:Connect(function()
             local weapon = char:FindFirstChildOfClass("Tool")
             if weapon then
                 pcall(function()
-                    if weapon:FindFirstChild("Recoil") then weapon.Recoil.Value = 0 end
-                    if weapon:FindFirstChild("Spread") then weapon.Spread.Value = 0 end
-                    if weapon:FindFirstChild("Accuracy") then weapon.Accuracy.Value = 100 end
+                    if Toggles.NoRecoil and weapon:FindFirstChild("Recoil") then
+                        weapon.Recoil.Value = 0
+                    end
+                    if Toggles.NoSpread then
+                        if weapon:FindFirstChild("Spread") then weapon.Spread.Value = 0 end
+                        if weapon:FindFirstChild("Accuracy") then weapon.Accuracy.Value = 100 end
+                    end
                 end)
             end
         end
     end
 end)
 
--- [INFINITE AMMO]
+-- ============================================================
+--  INFINITE AMMO
+-- ============================================================
 task.spawn(function()
     while task.wait(0.5) do
         if Toggles.InfAmmo then
@@ -401,7 +518,101 @@ task.spawn(function()
     end
 end)
 
--- [FLY & NOCLIP]
+-- ============================================================
+--  INSTANT RELOAD
+-- ============================================================
+task.spawn(function()
+    while task.wait(0.1) do
+        if Toggles.InstantReload then
+            local char = LocalPlayer.Character
+            if char then
+                local weapon = char:FindFirstChildOfClass("Tool")
+                if weapon then
+                    local ammo = weapon:FindFirstChild("Ammo")
+                    local maxAmmo = weapon:FindFirstChild("MaxAmmo")
+                    local currentAmmo = weapon:FindFirstChild("CurrentAmmo")
+                    if ammo and maxAmmo and ammo.Value < maxAmmo.Value then
+                        ammo.Value = maxAmmo.Value
+                        if currentAmmo then currentAmmo.Value = maxAmmo.Value end
+                        local reloadEvent = weapon:FindFirstChild("Reload") or weapon:FindFirstChild("ReloadEvent")
+                        if reloadEvent and reloadEvent:IsA("RemoteEvent") then
+                            reloadEvent:FireServer()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================================
+--  RAPID FIRE
+-- ============================================================
+local rapidFireActive = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if Toggles.RapidFire and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        rapidFireActive = true
+        task.spawn(function()
+            while rapidFireActive and Toggles.RapidFire do
+                local char = LocalPlayer.Character
+                if char then
+                    local weapon = char:FindFirstChildOfClass("Tool")
+                    if weapon then
+                        weapon:Activate()
+                        task.wait(Settings.RapidFireDelay)
+                        weapon:Deactivate()
+                        task.wait(Settings.RapidFireDelay)
+                    end
+                end
+                task.wait()
+            end
+        end)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        rapidFireActive = false
+    end
+end)
+
+-- ============================================================
+--  HIT SOUND
+-- ============================================================
+local lastHealth = {}
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if Toggles.HitSound then
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr == LocalPlayer then continue end
+                local char = plr.Character
+                if char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        local current = hum.Health
+                        local prev = lastHealth[plr] or current
+                        if current < prev and current > 0 then
+                            local sound = Instance.new("Sound")
+                            sound.SoundId = "rbxassetid://9120390793"
+                            sound.Volume = Settings.HitSoundVolume
+                            sound.Parent = Camera
+                            sound:Play()
+                            game:GetService("Debris"):AddItem(sound, 0.5)
+                        end
+                        lastHealth[plr] = current
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================================
+--  FLY & NOCLIP
+-- ============================================================
 local flyBodyVelocity = nil
 local function toggleFly()
     local char = LocalPlayer.Character
@@ -427,58 +638,77 @@ local function toggleNoclip()
     end)
 end
 
--- [AUTO JUMP]
+-- ============================================================
+--  AUTO JUMP & BUNNY HOP
+-- ============================================================
 RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
     if Toggles.AutoJump then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and hum.MoveDirection.Magnitude > 0 and hum.FloorMaterial ~= Enum.Material.Air then
-                hum.Jump = true
-            end
+        if hum.MoveDirection.Magnitude > 0 and hum.FloorMaterial ~= Enum.Material.Air then
+            hum.Jump = true
+        end
+    end
+
+    if Toggles.BunnyHop then
+        if hum.MoveDirection.Magnitude > 0 and hum.FloorMaterial == Enum.Material.Air then
+            hum.Jump = true
         end
     end
 end)
 
--- [TRIGGERBOT]
+-- ============================================================
+--  TRIGGERBOT
+-- ============================================================
+local triggerbotCooldown = false
+
+local function triggerShoot(targetPart)
+    if triggerbotCooldown then return end
+    triggerbotCooldown = true
+
+    local char = LocalPlayer.Character
+    if char then
+        local weapon = char:FindFirstChildOfClass("Tool")
+        if weapon and weapon:FindFirstChild("Activate") then
+            weapon:Activate()
+            task.wait(Settings.TriggerbotDelay)
+            weapon:Deactivate()
+        end
+    end
+
+    task.wait(Settings.TriggerbotDelay)
+    triggerbotCooldown = false
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if Toggles.Triggerbot and input.UserInputType == Enum.UserInputType.MouseButton2 then
-        local target = getClosestToCrosshair()
-        if target then
-            local char = LocalPlayer.Character
-            if char then
-                local weapon = char:FindFirstChildOfClass("Tool")
-                if weapon then
-                    weapon:Activate()
-                    task.wait(Settings.TriggerbotDelay)
-                    weapon:Deactivate()
-                end
+    if Toggles.Triggerbot and not Toggles.TriggerbotAuto then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            local target = getBestTarget()
+            if target then
+                triggerShoot(target)
             end
         end
     end
 end)
 
--- [AIMLOCK]
-local LockedTarget = nil
-RunService.RenderStepped:Connect(function()
-    if Toggles.AimLock then
-        if not LockedTarget or not isAlive(LockedTarget.Parent) then
-            LockedTarget = getBestTarget()
-        end
-        if LockedTarget then
-            local targetPos = LockedTarget.Position
-            if Toggles.Predict then
-                local dist = (Camera.CFrame.Position - targetPos).Magnitude
-                targetPos = targetPos + (LockedTarget.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
+task.spawn(function()
+    while task.wait(0.05) do
+        if Toggles.Triggerbot and Toggles.TriggerbotAuto then
+            local target = getBestTarget()
+            if target then
+                triggerShoot(target)
             end
-            local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * 0.1 * 2))
         end
     end
 end)
 
--- [ESP]
+-- ============================================================
+--  ESP
+-- ============================================================
 local ESPObjects = {}
 local function updateESP()
     for _, obj in pairs(ESPObjects) do
@@ -560,21 +790,35 @@ task.spawn(function()
     while task.wait(0.2) do pcall(updateESP) end
 end)
 
--- [FOV & CROSSHAIR DRAWING]
+-- ============================================================
+--  FOV & CROSSHAIR DRAWING
+-- ============================================================
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5; FOVCircle.Color = Color3.fromRGB(255,255,255)
-FOVCircle.Transparency = 0.7; FOVCircle.NumSides = 64; FOVCircle.Filled = false; FOVCircle.Visible = false
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(255,255,255)
+FOVCircle.Transparency = 0.7
+FOVCircle.NumSides = 64
+FOVCircle.Filled = false
+FOVCircle.Visible = false
 
 local Crosshair = Drawing.new("Crosshair")
-Crosshair.Color = Color3.fromRGB(255,255,255); Crosshair.Thickness = 1; Crosshair.Size = 10; Crosshair.Visible = false
+Crosshair.Color = Color3.fromRGB(255,255,255)
+Crosshair.Thickness = 1
+Crosshair.Size = 10
+Crosshair.Visible = false
 
--- [MAIN RENDER LOOP]
+-- ============================================================
+--  MAIN RENDER LOOP
+-- ============================================================
 RunService.RenderStepped:Connect(function(dt)
     pcall(function()
-        -- FOV
+        -- FOV Circle (muncul jika di-toggle)
         if Toggles.FOV_Circle then
-            FOVCircle.Visible = true; FOVCircle.Radius = Settings.FovRadius
-            FOVCircle.Position = (Settings.FOVPosition == "Center") and Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or UserInputService:GetMouseLocation()
+            FOVCircle.Visible = true
+            FOVCircle.Radius = Settings.FovRadius
+            FOVCircle.Position = (Settings.FOVPosition == "Center") and 
+                Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2) or 
+                UserInputService:GetMouseLocation()
         else
             FOVCircle.Visible = false
         end
@@ -585,22 +829,19 @@ RunService.RenderStepped:Connect(function(dt)
             Crosshair.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
         end
 
-        -- Aimbot (jika AimLock tidak aktif)
-        if Toggles.Aimbot and not Toggles.AimLock then
+        -- Aimbot (1 toggle + mode Always / On Shoot)
+        if Toggles.Aimbot then
             local target = getBestTarget()
-            local isShooting = (Settings.AimMode == "Always") or (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1))
+            local isShooting = (Settings.AimMode == "Always") or 
+                               UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
             if target and isShooting then
-                local targetPos = target.Position
-                if Toggles.Predict then
-                    local dist = (Camera.CFrame.Position - targetPos).Magnitude
-                    targetPos = targetPos + (target.AssemblyLinearVelocity * (dist / Settings.BulletSpeed) * Settings.PredFactor)
-                end
+                local targetPos = predictPosition(target)
                 local targetCF = CFrame.new(Camera.CFrame.Position, targetPos)
                 Camera.CFrame = Camera.CFrame:Lerp(targetCF, 1 - math.exp(-Settings.Smoothness * dt * 2))
             end
         end
 
-        -- Movement (WalkSpeed / JumpPower)
+        -- Movement
         local char = LocalPlayer.Character
         if char and char:FindFirstChildOfClass("Humanoid") then
             char.Humanoid.WalkSpeed = Settings.WalkSpeed
@@ -618,7 +859,7 @@ RunService.RenderStepped:Connect(function(dt)
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
             if moveDir.Magnitude > 0 then
-                moveDir = moveDir.Unit * 50
+                moveDir = moveDir.Unit * Settings.FlySpeed
                 if flyBodyVelocity then flyBodyVelocity.Velocity = moveDir end
             else
                 if flyBodyVelocity then flyBodyVelocity.Velocity = Vector3.new(0,0,0) end
@@ -632,16 +873,21 @@ RunService.RenderStepped:Connect(function(dt)
     end)
 end)
 
--- [ANTI-AFK]
+-- ============================================================
+--  ANTI-AFK
+-- ============================================================
 LocalPlayer.Idled:Connect(function()
     if Toggles.AntiAFK then
+        local randomWait = math.random(5, 15) / 10
         VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
-        task.wait(1)
+        task.wait(randomWait)
         VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
     end
 end)
 
--- [KEYBINDS]
+-- ============================================================
+--  KEYBINDS
+-- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Keybinds.Aimbot then
@@ -678,9 +924,9 @@ end)
 -- ============================================================
 Window:Notify({
     Title = "W424 HUB",
-    Content = "Arsenal ULTIMATE v5.6 (UI Standard) Loaded!",
+    Content = "Arsenal ULTIMATE v5.6 (Sederhana + Lengkap) Loaded!",
     Type = "success",
     Duration = 4
 })
 
-print("✅ W424 HUB – Arsenal ULTIMATE v5.6 loaded!")
+print("✅ W424 HUB – Arsenal ULTIMATE v5.6 (Sederhana + Lengkap) loaded!")
